@@ -1,0 +1,7 @@
+query usageEstimation($range: DateRangeInput!, $organization: ID!) {
+  usageEstimation(range: $range) {
+    org(selector: { organization: $organization }) {
+      operations
+    }
+  }
+}

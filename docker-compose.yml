@@ -1,0 +1,290 @@
+version: "3.8"
+services:
+  zookeeper_1:
+    container_name: zookeeper_1
+    image: dd_services/zookeeper:3.2.3
+    build:
+      context: ./kafka/zookeeper
+    volumes:
+      - ./kafka/config/zookeeper_1/zookeeper.properties:/kafka/config/zookeeper.properties
+      - zookeeper_1:/tmp/zookeeper/
+    networks:
+      - kafka
+
+  kafka_1:
+    container_name: kafka_1
+    image: dd_services/kafka:3.2.3
+    build: 
+      context: ./kafka
+    volumes:
+      - ./kafka/config/kafka_1/server.properties:/kafka/config/server.properties
+      - kafka_1:/tmp/kafka-logs/
+    networks:
+      - kafka
+    depends_on:
+      - zookeeper_1
+
+  users:
+    container_name: users
+    restart: always
+    image: dd_services/users
+    build:
+        context: ./users
+    environment:
+      - DB_HOST=${LEADER_DATABASE_HOST}
+      - DB_PORT=${DATABASE_PORT}
+      - DB_DATABASE=${DATABASE_NAME}
+      - DB_COLLECTION=${USERS_COLLECTION_NAME}
+      - DB_USER=${USERS_COLLECTION_USER}
+      - DB_PASSWORD=${USERS_COLLECTION_PASSWORD}
+    volumes:
+      - users:/services/users
+    links:
+      - "leader_db:db"
+    depends_on:
+      - leader_db
+    networks:
+      - kafka
+      - services
+      - users
+      - database
+
+  files:
+    container_name: files
+    restart: always
+    image: dd_services/files
+    build:
+        context: ./files
+    ports:
+      - 8081:80
+    volumes:
+      - files:/services/files
+    networks:
+      - kafka
+      - services
+      - files
+      - public
+      - database
+    links:
+      - "leader_db:db"
+    environment:
+      - DB_HOST=${LEADER_DATABASE_HOST}
+      - DB_PORT=${DATABASE_PORT}
+      - DB_DATABASE=${DATABASE_NAME}
+      - DB_COLLECTION=${FILES_COLLECTION_NAME}
+      - DB_USER=${FILES_COLLECTION_USER}
+      - DB_PASSWORD=${FILES_COLLECTION_PASSWORD}
+    depends_on:
+      - leader_db
+
+  # sessions:
+  #   container_name: sessions
+  #   restart: always
+  #   image: dd_services/sessions
+  #   build:
+  #       context: ./sessions
+  #   volumes:
+  #     - sessions:/services/sessions
+  #   links:
+  #     - "sessions_db:db"
+  #   environment:
+  #     - DB_HOST=${LEADER_DATABASE_HOST}
+  #     - DB_PORT=${DATABASE_PORT}
+  #     - DB_DATABASE=${DATABASE_NAME}
+  #     - DB_COLLECTION=${SESSIONS_COLLECTION_NAME}
+  #     - DB_USER=${SESSIONS_COLLECTION_USER}
+  #     - DB_PASSWORD=${SESSIONS_COLLECTION_PASSWORD}
+  #   depends_on:
+  #     - sessions_db
+  #   networks:
+  #     - kafka
+  #     - services
+  #     - sessions
+
+  gateway:
+    container_name: gateway
+    restart: always
+    image: dd_services/gateway
+    build:
+        context: ./gateway
+    ports:
+      - 80:80
+    volumes:
+      # - ./gateway:/services/gateway
+      - gateway:/services/gateway
+    networks:
+      - kafka
+      - services
+      - public
+    depends_on:
+      - files
+      - users
+
+  leader_db:
+    image: mongo:latest
+    container_name: leader_db
+    environment:
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/data/logs
+      - MONGO_INITDB_DATABASE=${DATABASE_NAME}
+      - MONGO_INITDB_ROOT_USERNAME=${ADMIN_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${ADMIN_PASSWORD}
+      - REPLICA_SET_NAME=$REPLICA_SET_NAME
+      - LEADER_DATABASE_HOST=${LEADER_DATABASE_HOST}
+      - BACKUP_DATABASE_1_HOST=${BACKUP_DATABASE_1_HOST}
+      - BACKUP_DATABASE_2_HOST=${BACKUP_DATABASE_2_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - USERS_COLLECTION_NAME=${USERS_COLLECTION_NAME}
+      - USERS_COLLECTION_USER=${USERS_COLLECTION_USER}
+      - USERS_COLLECTION_PASSWORD=${USERS_COLLECTION_PASSWORD}
+      - FILES_COLLECTION_NAME=${FILES_COLLECTION_NAME}
+      - FILES_COLLECTION_USER=${FILES_COLLECTION_USER}
+      - FILES_COLLECTION_PASSWORD=${FILES_COLLECTION_PASSWORD}
+      - SESSIONS_COLLECTION_NAME=${SESSIONS_COLLECTION_NAME}
+      - SESSIONS_COLLECTION_USER=${SESSIONS_COLLECTION_USER}
+      - SESSIONS_COLLECTION_PASSWORD=${SESSIONS_COLLECTION_PASSWORD}
+    expose:
+        - ${DATABASE_PORT}
+    restart: always
+    volumes:
+      - leaderDB:/data/db
+      - leaderDB_config:/data/configdb
+      - leaderDB_logs:/data/logs
+      - ./dbs/scripts/init-mongo.sh:/scripts/rs-init.sh
+    command: sh -c "chmod +x /scripts/rs-init.sh && /usr/bin/mongod --bind_ip_all --replSet $REPLICA_SET_NAME --logpath /data/logs/mongo.log"
+    networks:
+      - database
+
+  backup_db_1:
+    image: mongo:latest
+    container_name: backup_db_1
+    environment:
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/data/logs
+    expose:
+        - ${DATABASE_PORT}
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", $REPLICA_SET_NAME, "--logpath", "/data/logs/mongo.log" ]
+    restart: always
+    volumes:
+      - backupDB_1:/data/db
+      - backupDB_1_config:/data/configdb
+      - backupDB_1_logs:/data/logs
+    networks:
+      - database
+
+  backup_db_2:
+    image: mongo:latest
+    container_name: backup_db_2
+    environment:
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/data/logs
+    expose:
+        - ${DATABASE_PORT}
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", $REPLICA_SET_NAME, "--logpath", "/data/logs/mongo.log" ]
+    restart: always
+    volumes:
+      - backupDB_2:/data/db
+      - backupDB_2_config:/data/configdb
+      - backupDB_2_logs:/data/logs
+    networks:
+      - database
+
+networks: 
+  kafka:
+    name: kafka
+    internal: true
+  services:
+    name: services
+    internal: true
+  files:
+    name: files
+    internal: true
+  users:
+    name: users
+    internal: true
+  sessions:
+    name: sessions
+    internal: true
+  public:
+    name: public
+    internal: false
+  database:
+    name: database
+    internal: true
+
+volumes:
+  gateway:
+    driver_opts:
+      type: none
+      device: ${PWD}/gateway
+      o: bind
+  users:
+    driver_opts:
+      type: none
+      device: ${PWD}/users
+      o: bind
+  files:
+    driver_opts:
+      type: none
+      device: ${PWD}/files
+      o: bind
+  sessions:
+    driver_opts:
+      type: none
+      device: ${PWD}/sessions
+      o: bind
+  leaderDB:
+    driver_opts:
+      type: none
+      device: ${PWD}/dbs/leader/data
+      o: bind
+  leaderDB_config:
+    driver_opts:
+      type: none
+      device: ${PWD}/dbs/leader/config
+      o: bind
+  leaderDB_logs:
+    driver_opts:
+      type: none
+      device: ${PWD}/dbs/leader/logs
+      o: bind
+  backupDB_1:
+    driver_opts:
+      type: none
+      device: ${PWD}/dbs/backup_1/data
+      o: bind
+  backupDB_1_config:
+    driver_opts:
+      type: none
+      device: ${PWD}/dbs/backup_1/config
+      o: bind
+  backupDB_1_logs:
+    driver_opts:
+      type: none
+      device: ${PWD}/dbs/backup_1/logs
+      o: bind
+  backupDB_2:
+    driver_opts:
+      type: none
+      device: ${PWD}/dbs/backup_2/data
+      o: bind
+  backupDB_2_config:
+    driver_opts:
+      type: none
+      device: ${PWD}/dbs/backup_2/config
+      o: bind
+  backupDB_2_logs:
+    driver_opts:
+      type: none
+      device: ${PWD}/dbs/backup_2/logs
+      o: bind
+  kafka_1:
+    driver_opts:
+      type: none
+      device: ${PWD}/kafka/data/kafka_1
+      o: bind
+  zookeeper_1:
+    driver_opts:
+      type: none
+      device: ${PWD}/kafka/data/zookeeper_1
+      o: bind

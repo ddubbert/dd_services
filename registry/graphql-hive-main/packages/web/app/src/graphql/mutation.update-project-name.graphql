@@ -1,0 +1,13 @@
+mutation updateProjectName($input: UpdateProjectNameInput!) {
+  updateProjectName(input: $input) {
+    ok {
+      selector {
+        organization
+        project
+      }
+      updatedProject {
+        ...ProjectFields
+      }
+    }
+  }
+}

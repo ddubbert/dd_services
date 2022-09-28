@@ -1,0 +1,11 @@
+mutation publishPersistedOperations($input: [PublishPersistedOperationInput!]!) {
+  publishPersistedOperations(input: $input) {
+    summary {
+      total
+      unchanged
+    }
+    operations {
+      operationHash
+    }
+  }
+}
