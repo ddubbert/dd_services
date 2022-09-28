@@ -1,0 +1,16 @@
+mutation createProject($input: CreateProjectInput!) {
+  createProject(input: $input) {
+    ok {
+      selector {
+        organization
+        project
+      }
+      createdProject {
+        ...ProjectFields
+      }
+      createdTargets {
+        ...TargetFields
+      }
+    }
+  }
+}

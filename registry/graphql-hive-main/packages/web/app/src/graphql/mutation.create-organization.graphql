@@ -1,0 +1,14 @@
+mutation createOrganization($input: CreateOrganizationInput!) {
+  createOrganization(input: $input) {
+    ok {
+      createdOrganizationPayload {
+        selector {
+          organization
+        }
+        organization {
+          ...OrganizationFields
+        }
+      }
+    }
+  }
+}

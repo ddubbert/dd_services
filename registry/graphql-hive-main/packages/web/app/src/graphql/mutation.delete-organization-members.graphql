@@ -1,0 +1,16 @@
+mutation deleteOrganizationMembers($selector: OrganizationMembersSelectorInput!) {
+  deleteOrganizationMembers(selector: $selector) {
+    selector {
+      organization
+    }
+    organization {
+      id
+      members {
+        total
+        nodes {
+          ...MemberFields
+        }
+      }
+    }
+  }
+}

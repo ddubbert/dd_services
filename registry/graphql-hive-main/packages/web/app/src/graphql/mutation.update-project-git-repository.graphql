@@ -1,0 +1,13 @@
+mutation updateProjectGitRepository($input: UpdateProjectGitRepositoryInput!) {
+  updateProjectGitRepository(input: $input) {
+    ok {
+      selector {
+        organization
+        project
+      }
+      updatedProject {
+        ...ProjectFields
+      }
+    }
+  }
+}

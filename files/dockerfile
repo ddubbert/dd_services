@@ -1,0 +1,13 @@
+FROM node:14.17.6-alpine 
+
+RUN npm install yarn
+
+WORKDIR /services/files
+
+COPY package.json ./
+
+RUN yarn install
+
+COPY . . 
+
+CMD [ "yarn", "start" ]
