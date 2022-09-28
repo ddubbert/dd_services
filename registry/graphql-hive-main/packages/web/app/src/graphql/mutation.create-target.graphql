@@ -1,0 +1,14 @@
+mutation createTarget($input: CreateTargetInput!) {
+  createTarget(input: $input) {
+    ok {
+      selector {
+        organization
+        project
+        target
+      }
+      createdTarget {
+        ...TargetFields
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+mutation deletePersistedOperation($input: PersistedOperationSelectorInput!) {
+  deletePersistedOperation(selector: $input) {
+    deletedPersistedOperation {
+      __typename
+      id
+      operationHash
+    }
+  }
+}
