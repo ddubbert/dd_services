@@ -56,18 +56,13 @@ services:
     build:
         context: ./files
     ports:
-      - 8081:80
+      - ${FILES_PORT}:80
     volumes:
       - files:/services/files
-    networks:
-      - kafka
-      - services
-      - files
-      - public
-      - database
     links:
       - "leader_db:db"
     environment:
+      - PORT=${FILES_PORT}
       - DB_HOST=${LEADER_DATABASE_HOST}
       - DB_PORT=${DATABASE_PORT}
       - DB_DATABASE=${DATABASE_NAME}
@@ -76,30 +71,37 @@ services:
       - DB_PASSWORD=${FILES_COLLECTION_PASSWORD}
     depends_on:
       - leader_db
+    networks:
+      - kafka
+      - services
+      - files
+      - public
+      - database
 
-  # sessions:
-  #   container_name: sessions
-  #   restart: always
-  #   image: dd_services/sessions
-  #   build:
-  #       context: ./sessions
-  #   volumes:
-  #     - sessions:/services/sessions
-  #   links:
-  #     - "sessions_db:db"
-  #   environment:
-  #     - DB_HOST=${LEADER_DATABASE_HOST}
-  #     - DB_PORT=${DATABASE_PORT}
-  #     - DB_DATABASE=${DATABASE_NAME}
-  #     - DB_COLLECTION=${SESSIONS_COLLECTION_NAME}
-  #     - DB_USER=${SESSIONS_COLLECTION_USER}
-  #     - DB_PASSWORD=${SESSIONS_COLLECTION_PASSWORD}
-  #   depends_on:
-  #     - sessions_db
-  #   networks:
-  #     - kafka
-  #     - services
-  #     - sessions
+  sessions:
+    container_name: sessions
+    restart: always
+    image: dd_services/sessions
+    build:
+        context: ./sessions
+    volumes:
+      - sessions:/services/sessions
+    links:
+      - "leader_db:db"
+    environment:
+      - DB_HOST=${LEADER_DATABASE_HOST}
+      - DB_PORT=${DATABASE_PORT}
+      - DB_DATABASE=${DATABASE_NAME}
+      - DB_COLLECTION=${SESSIONS_COLLECTION_NAME}
+      - DB_USER=${SESSIONS_COLLECTION_USER}
+      - DB_PASSWORD=${SESSIONS_COLLECTION_PASSWORD}
+    depends_on:
+      - leader_db
+    networks:
+      - kafka
+      - services
+      - sessions
+      - database
 
   gateway:
     container_name: gateway
@@ -119,6 +121,7 @@ services:
     depends_on:
       - files
       - users
+      - sessions
 
   leader_db:
     image: mongo:latest

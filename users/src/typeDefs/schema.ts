@@ -8,7 +8,6 @@ export default gql`
   type User @key(fields: "id") {
     id: ID!
     nickname: String!
-    sessions: [ID!]!
   }
 
   extend schema

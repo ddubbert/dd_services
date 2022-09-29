@@ -10,6 +10,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
       subgraphs: [
         { name: 'users', url: 'http://users' },
         { name: 'files', url: 'http://files/graphql' },
+        { name: 'sessions', url: 'http://sessions' },
         // ...additional subgraphs...
       ],
     }),

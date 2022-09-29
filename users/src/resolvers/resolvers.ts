@@ -1,23 +1,16 @@
 type User = {
   id: string;
   nickname: string;
-  sessions: Array<string>;
-}
-
-type File = {
-  id: string;
 }
 
 const users: Array<User> = [
   {
     id: "1",
     nickname: "penis",
-    sessions: [],
   },
   {
     id: "2",
     nickname: "penis2",
-    sessions: [],
   }
 ]
 

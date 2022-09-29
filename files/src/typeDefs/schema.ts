@@ -26,7 +26,7 @@ export default gql`
 
   type User @key(fields: "id") {
     id: ID!
-    files: [File!]
+    files: [File!]!
   }
 
   extend schema
