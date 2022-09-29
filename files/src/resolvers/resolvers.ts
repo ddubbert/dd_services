@@ -24,14 +24,14 @@ const files: Array<File> = [
     id: '1',
     name: 'test1',
     description: 'toller text',
-    path: 'http://localhost:8082/static/files/1.jpeg',
+    path: `http://localhost:${process.env.PORT}/static/files/1.jpeg`,
     type: FileType.IMAGE,
     owner: { id: '1' }
   },
   {
     id: '2',
     name: 'test2',
-    path: 'http://localhost:8082/static/files/2.jpg',
+    path: `http://localhost:${process.env.PORT}/static/files/2.jpg`,
     type: FileType.IMAGE,
     owner: { id: '1' }
   },
@@ -39,7 +39,7 @@ const files: Array<File> = [
     id: '3',
     name: 'image',
     description: 'tolles image',
-    path: 'http://localhost:8082/static/files/3.png',
+    path: `http://localhost:${process.env.PORT}/static/files/3.png`,
     type: FileType.IMAGE,
     owner: { id: '2' }
   }
@@ -55,7 +55,7 @@ const emptyFile: File = {
 export default {
   Query: {
     allFiles: async (parent, args, context) => (files),
-    fileUploadLink: async () => 'http://localhost:8082/upload'
+    fileUploadLink: async () => `http://localhost:${process.env.PORT}/upload`
   },
   File: {
     __resolveReference(file){
@@ -64,8 +64,7 @@ export default {
   },
   User: {
     files: async (user) => {
-      const filtered = files.filter(file => file.owner === user.id)
-      return (filtered.length > 0) ? filtered : null;
+      return files.filter(f => f.owner && f.owner.id === user.id)
     }
   },
   FileType,
