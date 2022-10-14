@@ -6,9 +6,21 @@ export default gql`
   type Query {
     allSessions: [Session!]!
   }
+
+  type Mutation {
+    createSession(input: SessionCreateInput): Session!
+    addParticipant(sessionId: ID!, userId: ID!): Session!
+  }
+
+  input SessionCreateInput {
+    title: String!
+    owner: ID!
+    participants: [ID!]!
+  }
     
   type Session @key(fields: "id") {
     id: ID!
+    title: String!
     owner: User!
     participants: [User!]!
     createdAt: DateTime!

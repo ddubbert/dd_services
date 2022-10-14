@@ -26,5 +26,5 @@ import resolvers from './resolvers/resolvers';
 
   await new Promise<void>(r => app.listen({ port: 80 }, r));
 
-  console.log(`🚀 Server ready at http://files:80${server.graphqlPath}`);
+  console.log(`🚀 Server ready at http://${process.env.HOST}:${process.env.PORT}${server.graphqlPath}`);
 })()
