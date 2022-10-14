@@ -1,0 +1,30 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "darwin", "linux-musl"]
+}
+
+datasource db {
+    provider = "mongodb"
+    url      = env("DB_URL")
+}
+
+model File {
+    id              String      @id @default(auto()) @map("_id") @db.ObjectId
+    name            String
+    description     String
+    path            String
+    type            FileType    @default(ERROR)
+    owner           String      @db.ObjectId
+    createdAt       String
+    updatedAt       String
+
+    @@map("files")
+}
+
+enum FileType {
+  TEXT
+  IMAGE
+  AUDIO
+  PDF
+  ERROR
+}

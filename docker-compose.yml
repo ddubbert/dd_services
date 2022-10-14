@@ -1,28 +1,28 @@
 version: "3.8"
 services:
-  zookeeper_1:
-    container_name: zookeeper_1
-    image: dd_services/zookeeper:3.2.3
-    build:
-      context: ./kafka/zookeeper
-    volumes:
-      - ./kafka/config/zookeeper_1/zookeeper.properties:/kafka/config/zookeeper.properties
-      - zookeeper_1:/tmp/zookeeper/
-    networks:
-      - kafka
+  # zookeeper_1:
+  #   container_name: zookeeper_1
+  #   image: dd_services/zookeeper:3.2.3
+  #   build:
+  #     context: ./kafka/zookeeper
+  #   volumes:
+  #     - ./kafka/config/zookeeper_1/zookeeper.properties:/kafka/config/zookeeper.properties
+  #     - zookeeper_1:/tmp/zookeeper/
+  #   networks:
+  #     - kafka
 
-  kafka_1:
-    container_name: kafka_1
-    image: dd_services/kafka:3.2.3
-    build: 
-      context: ./kafka
-    volumes:
-      - ./kafka/config/kafka_1/server.properties:/kafka/config/server.properties
-      - kafka_1:/tmp/kafka-logs/
-    networks:
-      - kafka
-    depends_on:
-      - zookeeper_1
+  # kafka_1:
+  #   container_name: kafka_1
+  #   image: dd_services/kafka:3.2.3
+  #   build: 
+  #     context: ./kafka
+  #   volumes:
+  #     - ./kafka/config/kafka_1/server.properties:/kafka/config/server.properties
+  #     - kafka_1:/tmp/kafka-logs/
+  #   networks:
+  #     - kafka
+  #   depends_on:
+  #     - zookeeper_1
 
   users:
     container_name: users
@@ -31,12 +31,16 @@ services:
     build:
         context: ./users
     environment:
-      - DB_HOST=${LEADER_DATABASE_HOST}
+      - HOST=${USERS_HOST}
+      - PORT=${USERS_PORT}
+      - DB_URL=mongodb://${USERS_DATABASE_USER}:${USERS_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${USERS_DATABASE_NAME}
+      - DB_HOST=${DATABASE_HOST}
       - DB_PORT=${DATABASE_PORT}
-      - DB_DATABASE=${DATABASE_NAME}
-      - DB_COLLECTION=${USERS_COLLECTION_NAME}
-      - DB_USER=${USERS_COLLECTION_USER}
-      - DB_PASSWORD=${USERS_COLLECTION_PASSWORD}
+      - DB_DATABASE=${USERS_DATABASE_NAME}
+      - DB_USER=${USERS_DATABASE_USER}
+      - DB_PASSWORD=${USERS_DATABASE_PASSWORD}
+      - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
+      - REFRESH_KEY_PASSPHRASE=${REFRESH_KEY_PASSPHRASE}
     volumes:
       - users:/services/users
     links:
@@ -46,8 +50,8 @@ services:
     networks:
       - kafka
       - services
-      - users
       - database
+      - public
 
   files:
     container_name: files
@@ -56,25 +60,27 @@ services:
     build:
         context: ./files
     ports:
-      - ${FILES_PORT}:80
+      - ${FILES_UPLOAD_PORT}:80
     volumes:
       - files:/services/files
     links:
       - "leader_db:db"
     environment:
+      - HOST=${FILES_HOST}
       - PORT=${FILES_PORT}
-      - DB_HOST=${LEADER_DATABASE_HOST}
+      - UPLOAD_PORT=${FILES_UPLOAD_PORT}
+      - DB_URL=mongodb://${FILES_DATABASE_USER}:${FILES_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${FILES_DATABASE_NAME}
+      - DB_HOST=${DATABASE_HOST}
       - DB_PORT=${DATABASE_PORT}
-      - DB_DATABASE=${DATABASE_NAME}
-      - DB_COLLECTION=${FILES_COLLECTION_NAME}
-      - DB_USER=${FILES_COLLECTION_USER}
-      - DB_PASSWORD=${FILES_COLLECTION_PASSWORD}
+      - DB_DATABASE=${FILES_DATABASE_NAME}
+      - DB_USER=${FILES_DATABASE_USER}
+      - DB_PASSWORD=${FILES_DATABASE_PASSWORD}
+      - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
     depends_on:
       - leader_db
     networks:
       - kafka
       - services
-      - files
       - public
       - database
 
@@ -89,18 +95,20 @@ services:
     links:
       - "leader_db:db"
     environment:
-      - DB_HOST=${LEADER_DATABASE_HOST}
+      - HOST=${SESSIONS_HOST}
+      - PORT=${SESSIONS_PORT}
+      - DB_URL=mongodb://${SESSIONS_DATABASE_USER}:${SESSIONS_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${SESSIONS_DATABASE_NAME}
+      - DB_HOST=${DATABASE_HOST}
       - DB_PORT=${DATABASE_PORT}
-      - DB_DATABASE=${DATABASE_NAME}
-      - DB_COLLECTION=${SESSIONS_COLLECTION_NAME}
-      - DB_USER=${SESSIONS_COLLECTION_USER}
-      - DB_PASSWORD=${SESSIONS_COLLECTION_PASSWORD}
+      - DB_DATABASE=${SESSIONS_DATABASE_NAME}
+      - DB_USER=${SESSIONS_DATABASE_USER}
+      - DB_PASSWORD=${SESSIONS_DATABASE_PASSWORD}
+      - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
     depends_on:
       - leader_db
     networks:
       - kafka
       - services
-      - sessions
       - database
 
   gateway:
@@ -129,23 +137,23 @@ services:
     environment:
       - MONGO_DATA_DIR=/data/db
       - MONGO_LOG_DIR=/data/logs
-      - MONGO_INITDB_DATABASE=${DATABASE_NAME}
+      - MONGO_INITDB_DATABASE=${ROOT_DATABASE_NAME}
       - MONGO_INITDB_ROOT_USERNAME=${ADMIN_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${ADMIN_PASSWORD}
       - REPLICA_SET_NAME=$REPLICA_SET_NAME
-      - LEADER_DATABASE_HOST=${LEADER_DATABASE_HOST}
+      - LEADER_DATABASE_HOST=${DATABASE_HOST}
       - BACKUP_DATABASE_1_HOST=${BACKUP_DATABASE_1_HOST}
       - BACKUP_DATABASE_2_HOST=${BACKUP_DATABASE_2_HOST}
       - DATABASE_PORT=${DATABASE_PORT}
-      - USERS_COLLECTION_NAME=${USERS_COLLECTION_NAME}
-      - USERS_COLLECTION_USER=${USERS_COLLECTION_USER}
-      - USERS_COLLECTION_PASSWORD=${USERS_COLLECTION_PASSWORD}
-      - FILES_COLLECTION_NAME=${FILES_COLLECTION_NAME}
-      - FILES_COLLECTION_USER=${FILES_COLLECTION_USER}
-      - FILES_COLLECTION_PASSWORD=${FILES_COLLECTION_PASSWORD}
-      - SESSIONS_COLLECTION_NAME=${SESSIONS_COLLECTION_NAME}
-      - SESSIONS_COLLECTION_USER=${SESSIONS_COLLECTION_USER}
-      - SESSIONS_COLLECTION_PASSWORD=${SESSIONS_COLLECTION_PASSWORD}
+      - USERS_DATABASE_NAME=${USERS_DATABASE_NAME}
+      - USERS_DATABASE_USER=${USERS_DATABASE_USER}
+      - USERS_DATABASE_PASSWORD=${USERS_DATABASE_PASSWORD}
+      - FILES_DATABASE_NAME=${FILES_DATABASE_NAME}
+      - FILES_DATABASE_USER=${FILES_DATABASE_USER}
+      - FILES_DATABASE_PASSWORD=${FILES_DATABASE_PASSWORD}
+      - SESSIONS_DATABASE_NAME=${SESSIONS_DATABASE_NAME}
+      - SESSIONS_DATABASE_USER=${SESSIONS_DATABASE_USER}
+      - SESSIONS_DATABASE_PASSWORD=${SESSIONS_DATABASE_PASSWORD}
     expose:
         - ${DATABASE_PORT}
     restart: always
@@ -153,8 +161,18 @@ services:
       - leaderDB:/data/db
       - leaderDB_config:/data/configdb
       - leaderDB_logs:/data/logs
-      - ./dbs/scripts/init-mongo.sh:/scripts/rs-init.sh
-    command: sh -c "chmod +x /scripts/rs-init.sh && /usr/bin/mongod --bind_ip_all --replSet $REPLICA_SET_NAME --logpath /data/logs/mongo.log"
+      - ./dbs/scripts/rs-init.sh:/scripts/rs-init.sh
+      # - ./dbs/scripts/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh
+      - ./dbs/keyfile/keyfile.key:/keyfile/keyfile.key
+    entrypoint:
+      - bash
+      - -c
+      - |
+          chmod 400 /keyfile/keyfile.key
+          chown 999:999 /keyfile/keyfile.key
+          chmod +x /scripts/rs-init.sh
+          exec docker-entrypoint.sh $$@ 
+    command: ["/usr/bin/mongod", "--bind_ip_all", "--replSet", "$REPLICA_SET_NAME", "--logpath", "/data/logs/mongo.log", "--auth", "--keyFile", "./keyfile/keyfile.key"]
     networks:
       - database
 
@@ -166,12 +184,20 @@ services:
       - MONGO_LOG_DIR=/data/logs
     expose:
         - ${DATABASE_PORT}
-    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", $REPLICA_SET_NAME, "--logpath", "/data/logs/mongo.log" ]
+    entrypoint:
+        - bash
+        - -c
+        - |
+            chmod 400 /keyfile/keyfile.key
+            chown 999:999 /keyfile/keyfile.key
+            exec docker-entrypoint.sh $$@ 
+    command: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", $REPLICA_SET_NAME, "--logpath", "/data/logs/mongo.log", "--auth", "--keyFile", "./keyfile/keyfile.key" ]
     restart: always
     volumes:
       - backupDB_1:/data/db
       - backupDB_1_config:/data/configdb
       - backupDB_1_logs:/data/logs
+      - ./dbs/keyfile/keyfile.key:/keyfile/keyfile.key
     networks:
       - database
 
@@ -183,12 +209,20 @@ services:
       - MONGO_LOG_DIR=/data/logs
     expose:
         - ${DATABASE_PORT}
-    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", $REPLICA_SET_NAME, "--logpath", "/data/logs/mongo.log" ]
+    entrypoint:
+      - bash
+      - -c
+      - |
+          chmod 400 /keyfile/keyfile.key
+          chown 999:999 /keyfile/keyfile.key
+          exec docker-entrypoint.sh $$@ 
+    command: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", $REPLICA_SET_NAME, "--logpath", "/data/logs/mongo.log", "--auth", "--keyFile", "./keyfile/keyfile.key" ]
     restart: always
     volumes:
       - backupDB_2:/data/db
       - backupDB_2_config:/data/configdb
       - backupDB_2_logs:/data/logs
+      - ./dbs/keyfile/keyfile.key:/keyfile/keyfile.key
     networks:
       - database
 
@@ -198,15 +232,6 @@ networks:
     internal: true
   services:
     name: services
-    internal: true
-  files:
-    name: files
-    internal: true
-  users:
-    name: users
-    internal: true
-  sessions:
-    name: sessions
     internal: true
   public:
     name: public
@@ -222,20 +247,20 @@ volumes:
       device: ${PWD}/gateway
       o: bind
   users:
-    driver_opts:
-      type: none
-      device: ${PWD}/users
-      o: bind
+    # driver_opts:
+    #   type: none
+    #   device: ${PWD}/users
+    #   o: bind
   files:
-    driver_opts:
-      type: none
-      device: ${PWD}/files
-      o: bind
+    # driver_opts:
+    #   type: none
+    #   device: ${PWD}/files
+    #   o: bind
   sessions:
-    driver_opts:
-      type: none
-      device: ${PWD}/sessions
-      o: bind
+    # driver_opts:
+    #   type: none
+    #   device: ${PWD}/sessions
+    #   o: bind
   leaderDB:
     driver_opts:
       type: none

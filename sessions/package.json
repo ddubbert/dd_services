@@ -9,13 +9,17 @@
   "author": "Dennis Dubbert",
   "license": "MIT",
   "dependencies": {
-    "@apollo/gateway": "^2.0.5",
     "@apollo/subgraph": "^2.0.5",
+    "@envelop/core": "^2.6.0",
+    "@envelop/generic-auth": "^4.6.0",
+    "@prisma/client": "^4.4.0",
     "apollo-server": "^3.10.0",
+    "axios": "^1.0.0",
     "dotenv": "^16.0.1",
     "graphql": "^16.5.0",
     "graphql-iso-date": "^3.6.1",
-    "moment": "^2.29.4"
+    "moment": "^2.29.4",
+    "prisma": "^4.4.0"
   },
   "devDependencies": {
     "ts-node": "^10.9.1",

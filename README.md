@@ -2,38 +2,38 @@
 
 Beim ersten Start muss die start.sh ausgeführt werden. Für alle weiteren Startprozesse / wenn die Container bereits vorhanden und eingerichtet sind, kann docker-compose up genutzt werden.
 
-Zum starten wird ein .env-File mit folgenden Attributen benötigt:
+Zum starten wird ein .env-File mit folgenden Attributen benötigt (values sind nur Beispiele und sollten kontextbedingt angepasst werden):
 
-DATABASE_PORT=...
+REPLICA_SET_NAME=dd_services_db_replica
+DATABASE_PORT=27017
+ROOT_DATABASE_NAME=dd_services_db
 
-REPLICA_SET_NAME=...
+DATABASE_HOST=leader_db
+BACKUP_DATABASE_1_HOST=backup_db_1
+BACKUP_DATABASE_2_HOST=backup_db_2
 
-ADMIN_USERNAME=...
+ADMIN_USERNAME=adminUser
+ADMIN_PASSWORD=adminUserPW
 
-ADMIN_PASSWORD=...
+ACCESS_KEY_PASSPHRASE=hello
+REFRESH_KEY_PASSPHRASE=hello
 
-LEADER_DATABASE_HOST=...
+USERS_HOST=users
+USERS_PORT=80
+USERS_DATABASE_NAME=users
+USERS_DATABASE_USER=usersDatabaseUser
+USERS_DATABASE_PASSWORD=usersDatabasePW
 
-DATABASE_NAME=...
+FILES_HOST=files
+FILES_PORT=80
+FILES_UPLOAD_PORT=8081
+FILES_DATABASE_NAME=files
+FILES_DATABASE_USER=filesDatabaseUser
+FILES_DATABASE_PASSWORD=filesDatabasePW
 
-BACKUP_DATABASE_1_HOST=...
+SESSIONS_HOST=sessions
+SESSIONS_PORT=80
+SESSIONS_DATABASE_NAME=sessions
+SESSIONS_DATABASE_USER=sessionsDatabaseUser
+SESSIONS_DATABASE_PASSWORD=sessionsDatabasePW
 
-BACKUP_DATABASE_2_HOST=...
-
-USERS_COLLECTION_NAME=...
-
-USERS_COLLECTION_USER=...
-
-USERS_COLLECTION_PASSWORD=...
-
-FILES_COLLECTION_NAME=...
-
-FILES_COLLECTION_USER=...
-
-FILES_COLLECTION_PASSWORD=...
-
-SESSIONS_COLLECTION_NAME=...
-
-SESSIONS_COLLECTION_USER=...
-
-SESSIONS_COLLECTION_PASSWORD=...
