@@ -1,8 +1,19 @@
 require('dotenv').config();
+
+import { RemoteGraphQLDataSource } from '@apollo/gateway'
 const express = require('express');
 const { ApolloServer } = require('apollo-server-express');
 const { ApolloGateway, IntrospectAndCompose } = require('@apollo/gateway');
 import { createProxyMiddleware } from 'http-proxy-middleware';
+
+class AuthenticatedDataSource extends RemoteGraphQLDataSource {
+  willSendRequest({ request, context }) {
+    if (context?.req?.headers?.authorization) {
+      request.http.headers.set('authorization', context.req.headers.authorization);
+      // request.https.headers.set('authorization', context.req.headers.authorization);
+    }
+  }
+}
 
 (async () => {
   const gateway = new ApolloGateway({
@@ -14,11 +25,17 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
         // ...additional subgraphs...
       ],
     }),
+    buildService: ({ _name, url }) => {
+      return new AuthenticatedDataSource({ url });
+    },
   });
 
   const server = new ApolloServer({
     gateway,
     // Subscriptions are not currently supported in Apollo Federation
+    context: async ({ req }) => {
+      return { req };
+    },
     subscriptions: false,
     introspection: true,
     playground: true

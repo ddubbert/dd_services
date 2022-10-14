@@ -1,70 +1,37 @@
-type File = {
-  id: string;
-  name: string;
-  description?: string | null;
-  path: string;
-  type: FileType;
-  owner?: User;
-}
-
-type User = {
-  id: string;
-}
-
-enum FileType {
-  TEXT = 'txt',
-  IMAGE = 'mg',
-  AUDIO = 'wav',
-  PDF = 'pdf',
-  ERROR = 'error'
-}
-
-const files: Array<File> = [
-  {
-    id: '1',
-    name: 'test1',
-    description: 'toller text',
-    path: `http://localhost:${process.env.PORT}/static/files/1.jpeg`,
-    type: FileType.IMAGE,
-    owner: { id: '1' }
-  },
-  {
-    id: '2',
-    name: 'test2',
-    path: `http://localhost:${process.env.PORT}/static/files/2.jpg`,
-    type: FileType.IMAGE,
-    owner: { id: '1' }
-  },
-  {
-    id: '3',
-    name: 'image',
-    description: 'tolles image',
-    path: `http://localhost:${process.env.PORT}/static/files/3.png`,
-    type: FileType.IMAGE,
-    owner: { id: '2' }
-  }
-]
+import { GraphQLDateTime } from 'graphql-iso-date';
+import moment from 'moment';
+import db from '../models/database'
+import { File, FileType } from '@prisma/client'
 
 const emptyFile: File = {
   id: '0',
   name: 'Not Found',
   path: 'Not There',
-  type: FileType.ERROR
+  type: FileType.ERROR,
+  description: 'No File was found',
+  owner: '0',
+  createdAt: moment().toISOString(),
+  updatedAt: moment().toISOString(),
 }
 
 export default {
+  DateTime: GraphQLDateTime,
   Query: {
-    allFiles: async (parent, args, context) => (files),
-    fileUploadLink: async () => `http://localhost:${process.env.PORT}/upload`
+    allFiles: async (parent, args, context) => (await db.getFiles()),
+    fileUploadLink: async () => `http://${process.env.HOST}:${process.env.UPLOAD_PORT}/upload`
+  },
+  Mutation: {
+    createFile: async (parent, args, context) => (await db.createFile(args.input))
   },
   File: {
-    __resolveReference(file){
-      return files.find(f => f.id === file.id) ?? emptyFile;
-    }
+    __resolveReference: async (file) => {
+      return (await db.getFileBy(file.id)) ?? emptyFile;
+    },
+    owner:  async (parent, args, context) => ({ id: parent.owner })
   },
   User: {
     files: async (user) => {
-      return files.filter(f => f.owner && f.owner.id === user.id)
+      return await db.getFiles({ owner: user.id })
     }
   },
   FileType,

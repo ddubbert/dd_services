@@ -1,13 +1,25 @@
 FROM node:14.17.6-alpine
 
-RUN npm install yarn
-
 WORKDIR /services/sessions
 
-COPY package.json ./
+RUN npm install yarn
+
+COPY package*.json ./
+
+COPY keycloak.json ./
+
+COPY yarn.lock ./
+
+COPY tsconfig.json ./
+
+COPY prisma ./prisma/
+
+COPY accessKey.pem ./
+
+COPY src ./src/
 
 RUN yarn install
 
-COPY . .
+RUN npx prisma generate --schema=./prisma/schema.prisma
 
 CMD [ "yarn", "start" ]
