@@ -1,6 +1,6 @@
 generator client {
     provider = "prisma-client-js"
-    binaryTargets = ["native", "darwin", "linux-musl"]
+    binaryTargets = ["native", "linux-arm64-openssl-1.1.x", "darwin", "linux-musl"]
 }
 
 datasource db {
@@ -9,11 +9,11 @@ datasource db {
 }
 
 model User {
-    dbId            String      @id @default(auto()) @map("_id") @db.ObjectId
-    id              String      @unique @default(uuid())
-    authId          String?     @unique
+    id              String      @id @default(auto()) @map("_id") @db.ObjectId
     nickname        String
     isPermanent     Boolean     @default(false)
+    authId          String?     @unique
+    email           String?     @unique
     refreshKey      String?
     refreshEnd      DateTime?
     createdAt       DateTime    @default(now())

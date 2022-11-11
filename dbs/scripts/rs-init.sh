@@ -38,9 +38,11 @@ sleep $DELAY
 mongosh <<EOF
 use admin
 db.auth("$MONGO_INITDB_ROOT_USERNAME", "$MONGO_INITDB_ROOT_PASSWORD")
-use $USERS_DATABASE_NAME
 
-rs.status();
+rs.status()
+
+use $USERS_DATABASE_NAME
+db.createCollection("users", { changeStreamPreAndPostImages: { enabled: true } })
 
 db.createUser({
   user: "$USERS_DATABASE_USER",
@@ -49,6 +51,7 @@ db.createUser({
 })
 
 use $FILES_DATABASE_NAME
+db.createCollection("files", { changeStreamPreAndPostImages: { enabled: true } })
 
 db.createUser({
   user: "$FILES_DATABASE_USER",
@@ -57,6 +60,7 @@ db.createUser({
 })
 
 use $SESSIONS_DATABASE_NAME
+db.createCollection("sessions", { changeStreamPreAndPostImages: { enabled: true } })
 
 db.createUser({
   user: "$SESSIONS_DATABASE_USER",

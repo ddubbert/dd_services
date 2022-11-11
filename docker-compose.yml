@@ -1,28 +1,28 @@
 version: "3.8"
 services:
-  # zookeeper_1:
-  #   container_name: zookeeper_1
-  #   image: dd_services/zookeeper:3.2.3
-  #   build:
-  #     context: ./kafka/zookeeper
-  #   volumes:
-  #     - ./kafka/config/zookeeper_1/zookeeper.properties:/kafka/config/zookeeper.properties
-  #     - zookeeper_1:/tmp/zookeeper/
-  #   networks:
-  #     - kafka
+  zookeeper_1:
+    container_name: zookeeper_1
+    image: dd_services/zookeeper:3.2.3
+    build:
+      context: ./kafka/zookeeper
+    volumes:
+      - ./kafka/config/zookeeper_1/zookeeper.properties:/kafka/config/zookeeper.properties
+      - zookeeper_1:/tmp/zookeeper/
+    networks:
+      - kafka
 
-  # kafka_1:
-  #   container_name: kafka_1
-  #   image: dd_services/kafka:3.2.3
-  #   build: 
-  #     context: ./kafka
-  #   volumes:
-  #     - ./kafka/config/kafka_1/server.properties:/kafka/config/server.properties
-  #     - kafka_1:/tmp/kafka-logs/
-  #   networks:
-  #     - kafka
-  #   depends_on:
-  #     - zookeeper_1
+  kafka_1:
+    container_name: kafka_1
+    image: dd_services/kafka:3.2.3
+    build: 
+      context: ./kafka
+    volumes:
+      - ./kafka/config/kafka_1/server.properties:/kafka/config/server.properties
+      - kafka_1:/tmp/kafka-logs/
+    networks:
+      - kafka
+    depends_on:
+      - zookeeper_1
 
   users:
     container_name: users
@@ -41,6 +41,7 @@ services:
       - DB_PASSWORD=${USERS_DATABASE_PASSWORD}
       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
       - REFRESH_KEY_PASSPHRASE=${REFRESH_KEY_PASSPHRASE}
+      - KAFKA_URL=kafka_1:9092
     volumes:
       - users:/services/users
     links:
@@ -76,6 +77,7 @@ services:
       - DB_USER=${FILES_DATABASE_USER}
       - DB_PASSWORD=${FILES_DATABASE_PASSWORD}
       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
+      - KAFKA_URL=kafka_1:9092
     depends_on:
       - leader_db
     networks:
@@ -104,6 +106,7 @@ services:
       - DB_USER=${SESSIONS_DATABASE_USER}
       - DB_PASSWORD=${SESSIONS_DATABASE_PASSWORD}
       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
+      - KAFKA_URL=kafka_1:9092
     depends_on:
       - leader_db
     networks:
@@ -132,8 +135,9 @@ services:
       - sessions
 
   leader_db:
-    image: mongo:latest
+    image: mongo:6.0
     container_name: leader_db
+    init: true
     environment:
       - MONGO_DATA_DIR=/data/db
       - MONGO_LOG_DIR=/data/logs
@@ -177,8 +181,9 @@ services:
       - database
 
   backup_db_1:
-    image: mongo:latest
+    image: mongo:6.0
     container_name: backup_db_1
+    init: true
     environment:
       - MONGO_DATA_DIR=/data/db
       - MONGO_LOG_DIR=/data/logs
@@ -202,8 +207,9 @@ services:
       - database
 
   backup_db_2:
-    image: mongo:latest
+    image: mongo:6.0
     container_name: backup_db_2
+    init: true
     environment:
       - MONGO_DATA_DIR=/data/db
       - MONGO_LOG_DIR=/data/logs
@@ -242,10 +248,10 @@ networks:
 
 volumes:
   gateway:
-    driver_opts:
-      type: none
-      device: ${PWD}/gateway
-      o: bind
+    # driver_opts:
+    #   type: none
+    #   device: ${PWD}/gateway
+    #   o: bind
   users:
     # driver_opts:
     #   type: none
