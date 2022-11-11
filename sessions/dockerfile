@@ -1,12 +1,14 @@
-FROM node:14.17.6-alpine
+FROM node:16.18
 
 WORKDIR /services/sessions
 
+RUN apt-get update
+
+RUN apt-get install -y openssl
+
 RUN npm install yarn
 
-COPY package*.json ./
-
-COPY keycloak.json ./
+COPY package.json ./
 
 COPY yarn.lock ./
 

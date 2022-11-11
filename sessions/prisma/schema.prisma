@@ -1,6 +1,6 @@
 generator client {
     provider = "prisma-client-js"
-    binaryTargets = ["native", "darwin", "linux-musl"]
+    binaryTargets = ["native", "linux-arm64-openssl-1.1.x", "darwin", "linux-musl"]
 }
 
 datasource db {
@@ -9,11 +9,12 @@ datasource db {
 }
 
 model Session {
-    privateId       String      @id @default(auto()) @map("_id") @db.ObjectId
-    id              String      @unique @default(uuid())
+    id              String      @id @default(auto()) @map("_id") @db.ObjectId
+    privateId       String      @unique @default(uuid())
     title           String
-    owner           String
-    participants    String[]
+    owners          String[]    @default([])
+    participants    String[]    @default([])
+    parentSession   String?
     createdAt       DateTime    @default(now())
     updatedAt       DateTime    @default(now())
     deletedAt       DateTime
