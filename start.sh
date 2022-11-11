@@ -1,7 +1,7 @@
 #!/bin/bash
 
 source .env
-DELAY=20
+DELAY=40
 
 rm -rf ./kafka/data
 mkdir -p ./kafka/data

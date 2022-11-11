@@ -1,13 +1,17 @@
-FROM node:14.17.6-alpine 
-
-RUN npm install yarn
+FROM node:14.17.6-alpine
 
 WORKDIR /services/gateway
 
-COPY package.json ./
+RUN npm install yarn
+
+COPY package*.json ./
+
+COPY yarn.lock ./
+
+COPY tsconfig.json ./
+
+COPY src ./src/
 
 RUN yarn install
-
-COPY . . 
 
 CMD [ "yarn", "start" ]
