@@ -3,6 +3,9 @@
 source .env
 DELAY=40
 
+rm -rf ./redisCache
+mkdir -p ./redisCache
+
 rm -rf ./kafka/data
 mkdir -p ./kafka/data
 mkdir -p ./kafka/data/kafka_1

@@ -7,6 +7,7 @@ import { MessageEvent } from '../types/kafka/EventMessage'
 import { Entity, EntityType } from '../types/kafka/Entity'
 import { DBFunction, DBFunctionPayload, RawUpdatePayload, verifyRawUpdatePayload } from '../types/DBFunction'
 import { getOtherRole, UserRole } from '../types/UserRole'
+import { InternalServerError } from '../types/Errors'
 
 const getAffectedEntities = (session: Session): Entity[] => {
   const parentSession: Entity[] = session.parentSession
@@ -17,10 +18,6 @@ const getAffectedEntities = (session: Session): Entity[] => {
   return [ ...parentSession, ...affectedOwners, ...affectedParticipants ]
 }
 
-type funn = () => string
-
-const f: funn = () => 'hi'
-
 export const createSessionDB = async (events: EventHandler): Promise<SessionDatabase> => {
   const prisma = new PrismaClient()
   let mongo: MongoClient
@@ -28,12 +25,12 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
 
   const setupDatabaseEvents = async (): Promise<void> => {
     const dbUrl = process.env.DB_URL
-    if (!dbUrl) { throw new Error('No DB_URL provided in environment.') }
+    if (!dbUrl) { throw new InternalServerError('No DB_URL provided in environment.') }
 
     mongo = new MongoClient(dbUrl)
 
     const dbName = process.env.DB_DATABASE
-    if (!dbName) { throw new Error('No DB_DATABASE provided in environment.') }
+    if (!dbName) { throw new InternalServerError('No DB_DATABASE provided in environment.') }
 
     const database = mongo.db(dbName)
     const collection = database.collection('sessions')
@@ -126,7 +123,7 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
         ],
       })
     } catch (e) {
-      console.log('No child sessions found and deleted.')
+      console.error('No child sessions found and deleted.')
     }
   }
 
