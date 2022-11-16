@@ -24,6 +24,16 @@ services:
     depends_on:
       - zookeeper_1
 
+  redisCache:
+    container_name: redisCache
+    image: redis:6.2-alpine
+    restart: always
+    command: "redis-server --save 20 1 --loglevel warning --requirepass ${CACHE_PASSWORD}"
+    volumes: 
+      - redisCache:/data
+    networks:
+      - services
+
   users:
     container_name: users
     restart: always
@@ -42,12 +52,19 @@ services:
       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
       - REFRESH_KEY_PASSPHRASE=${REFRESH_KEY_PASSPHRASE}
       - KAFKA_URL=kafka_1:9092
+      - CACHE_HOST=${CACHE_HOST}
+      - CACHE_PORT=${CACHE_PORT}
+      - CACHE_PASSWORD=${CACHE_PASSWORD}
+      - GATEWAY_HOST=${GATEWAY_HOST}
+      - GATEWAY_PORT=${GATEWAY_PORT}
     volumes:
       - users:/services/users
     links:
       - "leader_db:db"
     depends_on:
       - leader_db
+      - redisCache
+      - kafka_1
     networks:
       - kafka
       - services
@@ -78,8 +95,13 @@ services:
       - DB_PASSWORD=${FILES_DATABASE_PASSWORD}
       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
       - KAFKA_URL=kafka_1:9092
+      - CACHE_HOST=${CACHE_HOST}
+      - CACHE_PORT=${CACHE_PORT}
+      - CACHE_PASSWORD=${CACHE_PASSWORD}
     depends_on:
       - leader_db
+      - redisCache
+      - kafka_1
     networks:
       - kafka
       - services
@@ -107,8 +129,13 @@ services:
       - DB_PASSWORD=${SESSIONS_DATABASE_PASSWORD}
       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
       - KAFKA_URL=kafka_1:9092
+      - CACHE_HOST=${CACHE_HOST}
+      - CACHE_PORT=${CACHE_PORT}
+      - CACHE_PASSWORD=${CACHE_PASSWORD}
     depends_on:
       - leader_db
+      - redisCache
+      - kafka_1
     networks:
       - kafka
       - services
@@ -247,6 +274,11 @@ networks:
     internal: true
 
 volumes:
+  redisCache:
+    driver_opts:
+      type: none
+      device: ${PWD}/redisCache
+      o: bind
   gateway:
     # driver_opts:
     #   type: none

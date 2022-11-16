@@ -1,19 +1,20 @@
 import { GraphQLDateTime } from 'graphql-iso-date'
 import { Context } from '../types/Context'
-import { authorizeDelay, DeletionDelay } from '../types/DeletionDelay'
+import { getDelayIfAuthorized, TTL } from '../types/DeletionDelay'
 import moment from 'moment'
 import { DeletionStatus } from '../types/DeletionStatus'
 import { Prisma, Session } from '@prisma/client'
 import { verifyRawUpdatePayload, verifySession } from '../types/DBFunction'
 import { depthLimitedFieldResolver, depthLimitedReferenceResolver } from '../utils/PathReader'
 import { FieldResolverFn } from '../types/ResolverFn'
+import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '../types/Errors'
 
 const getSessionIfAuthorized = async (sessionId: string, context: Context): Promise<Session|never> => {
   const session = await context.db.getSessionBy(sessionId)
   const user = context.currentUser.userId
 
   if (!session || (!session.participants.includes(user) && !session.owners.includes(user))) {
-    throw new Error('User is not authorized to access or update this session.')
+    throw new ForbiddenError('User is not authorized to access or update this session.')
   }
 
   return session
@@ -21,13 +22,7 @@ const getSessionIfAuthorized = async (sessionId: string, context: Context): Prom
 
 export default {
   DateTime: GraphQLDateTime,
-  TTL: {
-    X_LONG: DeletionDelay.X_LONG,
-    LONG: DeletionDelay.LONG,
-    MEDIUM: DeletionDelay.MEDIUM,
-    SHORT: DeletionDelay.SHORT,
-    X_SHORT: DeletionDelay.X_SHORT,
-  },
+  TTL,
   DeletionStatus: {
     SUCCESSFUL: DeletionStatus.SUCCESSFUL,
     UNSUCCESSFUL: DeletionStatus.UNSUCCESSFUL,
@@ -38,18 +33,21 @@ export default {
   },
   Mutation: {
     createSession: (async (parent, args, context) => {
-      const ttl: DeletionDelay = DeletionDelay[args.input.ttl]
-      authorizeDelay(context.currentUser, ttl)
+      const ttl = args.input.ttl
+      console.log(ttl)
+      const delay = getDelayIfAuthorized(context.currentUser, ttl)
 
       const update: Prisma.SessionCreateInput = {
         title: args.input.title,
         owners: [ context.currentUser.userId ],
-        deletedAt: moment().add(ttl.delay, ttl.unit).toISOString(),
+        deletedAt: moment().add(delay.delay, delay.unit).toISOString(),
       }
 
       if (args.input.parentSession) {
         const parentSession = await getSessionIfAuthorized(args.input.parentSession, context)
-        if (parentSession.parentSession) { throw Error('Provided parent session already is a child session.') }
+        if (parentSession.parentSession) {
+          throw new BadRequestError('Provided parent session already is a child session.')
+        }
         update.parentSession = parentSession.id
       }
 
@@ -58,7 +56,7 @@ export default {
     addParticipantsToSession: (async (parent, args, context) => {
       const session = await getSessionIfAuthorized(args.sessionId, context)
       if (session.owners.some(owner => args.userIds.includes(owner))) {
-        throw new Error(`One or more of the users are already owners of this session.
+        throw new BadRequestError(`One or more of the users are already owners of this session.
          Demotions are handled in a separate mutation.`)
       }
 
@@ -70,9 +68,9 @@ export default {
         try {
           const payload = await context.db.addUsersAsParticipants(session, futureParticipants)
           console.log(payload)
-          if (payload.nModified === 0) { throw Error('') }
+          if (payload.nModified === 0) { throw new Error('') }
         } catch (_e) {
-          throw Error('Could not add users as participants of this session.')
+          throw new InternalServerError('Could not add users as participants of this session.')
         }
 
         session.updatedAt = moment().toDate()
@@ -84,7 +82,7 @@ export default {
     addOwnersToSession: (async (parent, args, context) => {
       const session = await getSessionIfAuthorized(args.sessionId, context)
       if (!session.owners.includes(context.currentUser.userId)) {
-        throw new Error('User is not authorized to add an owner to this session.')
+        throw new ForbiddenError('User is not authorized to add an owner to this session.')
       }
 
       const futureOwners = args.userIds.reduce((acc, it) => session.owners.includes(it) ? acc : [ ...acc, it ], [] as string[])
@@ -92,9 +90,9 @@ export default {
       if (futureOwners.length > 0) {
         try {
           const payload = await context.db.addUsersAsOwners(session, futureOwners)
-          if (payload.nModified === 0) { throw Error('') }
+          if (payload.nModified === 0) { throw new Error('') }
         } catch (e) {
-          throw Error('Could not add users as owners of this session.')
+          throw new InternalServerError('Could not add users as owners of this session.')
         }
 
         session.updatedAt = moment().toDate()
@@ -109,15 +107,19 @@ export default {
     }) as FieldResolverFn,
     joinSessionAsParticipant: (async (parent, args, context): Promise<Session> => {
       const session = await context.db.getSessionBy(args.sessionId)
-      if (!session) { throw Error('Could not join session.') }
-      if (session.owners.includes(context.currentUser.userId)) { throw new Error('User is already owner of this session.') }
+      if (!session) {
+        throw new NotFoundError()
+      }
+      if (session.owners.includes(context.currentUser.userId)) {
+        throw new BadRequestError('User is already owner of this session.')
+      }
 
       if (!session.participants.includes(context.currentUser.userId)) {
         try {
           const payload = await context.db.addUsersAsParticipants(session, [ context.currentUser.userId ])
-          if (payload.nModified === 0) { throw Error('') }
+          if (payload.nModified === 0) { throw new Error('') }
         } catch (e) {
-          throw Error('Could not add users as owners of this session.')
+          throw new InternalServerError('Could not add users as owners of this session.')
         }
 
         session.updatedAt = moment().toDate()
@@ -127,14 +129,14 @@ export default {
     }) as FieldResolverFn,
     joinSessionAsOwner: (async (parent, args, context): Promise<Session> => {
       const session = await context.db.getSession({ privateId: args.sessionId })
-      if (!session) { throw Error('Could not join session.') }
+      if (!session) {throw new NotFoundError() }
 
       if (!session.owners.includes(context.currentUser.userId)) {
         try {
           const payload = await context.db.addUsersAsOwners(session, [ context.currentUser.userId ])
-          if (payload.nModified === 0) { throw Error('') }
+          if (payload.nModified === 0) { throw new Error('') }
         } catch (e) {
-          throw Error('Could not add users as owners of this session.')
+          throw new InternalServerError('Could not add users as owners of this session.')
         }
 
         session.updatedAt = moment().toDate()
@@ -146,18 +148,18 @@ export default {
     }) as FieldResolverFn,
     prolongSession: (async (parent, args, context) => {
       const session = await getSessionIfAuthorized(args.sessionId, context)
-      const ttl: DeletionDelay = DeletionDelay[args.ttl]
-      authorizeDelay(context.currentUser, ttl)
+      const ttl = args.ttl
+      const delay = getDelayIfAuthorized(context.currentUser, ttl)
 
       return await context.db.updateSession(
         { id: session.id },
-        { deletedAt: moment(session.deletedAt).add(ttl.delay, ttl.unit).toISOString() },
+        { deletedAt: moment(session.deletedAt).add(delay.delay, delay.unit).toISOString() },
       )
     }) as FieldResolverFn,
     deleteSession: (async (parent, args, context: Context) => {
       const session = await getSessionIfAuthorized(args.sessionId, context)
       if (!session.owners.includes(context.currentUser.userId)) {
-        throw new Error('User is not authorized to delete this session.')
+        throw new ForbiddenError('User is not authorized to delete this session.')
       }
 
       try {
@@ -173,7 +175,7 @@ export default {
       const ownerIndex = session.owners.indexOf(args.userId)
 
       if (!session.owners.includes(context.currentUser.userId)) {
-        throw new Error('User is not authorized to remove a user from this session.')
+        throw new ForbiddenError('User is not authorized to remove a user from this session.')
       }
 
       try {
@@ -181,7 +183,7 @@ export default {
         const payload = await context.db.removeUsersFromSession(session, [ args.userId ])
         if (payload.nModified === 0) { throw Error('') }
       } catch (e) {
-        throw Error('Could not remove user from this session.')
+        throw new InternalServerError('Could not remove user from this session.')
       }
 
       session.updatedAt = moment().toDate()
@@ -206,9 +208,11 @@ export default {
       const user = context.currentUser.userId
 
       if (!parentSession.owners.includes(user) || !childSession.owners.includes(user)) {
-        throw new Error('Provided parent session already is a child session.')
+        throw new ForbiddenError('User is not allowed to update these session.')
       }
-      if (parentSession.parentSession) { throw new Error('Provided parent session already is a child session.') }
+      if (parentSession.parentSession) {
+        throw new BadRequestError('Provided parent session already is a child session.')
+      }
 
       const childUsers = [ ...childSession.owners, ...childSession.participants ]
         .filter(it => parentSession.owners.includes(it))
