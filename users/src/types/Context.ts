@@ -2,8 +2,7 @@ import { UserDatabase } from '../models/UserDatabase'
 import { ExecutionContext } from 'graphql/execution/execute'
 import { Authenticator } from '../models/Authenticator'
 import EventHandler from '../models/EventHandler'
-import { AccessTokenContent } from './auth/AccessTokenContent'
-import {UserAuth} from "./auth/UserAuth";
+import { UserAuth } from './auth/UserAuth'
 
 export interface CustomContextData {
   currentUser: UserAuth

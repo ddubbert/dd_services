@@ -30,7 +30,7 @@ export class DeletionDelay {
     readonly unit: DelayUnit,
   ) {}
 
-  getMatchingFor(ttl: TTL): DeletionDelay {
+  static getMatchingFor(ttl: TTL): DeletionDelay {
     switch (ttl) {
     case TTL.X_LONG: {
       return DeletionDelay.X_LONG
@@ -51,8 +51,10 @@ export class DeletionDelay {
   }
 }
 
-export const authorizeDelay = (user: AccessTokenContent, delay: DeletionDelay): void|never => {
+export const getDelayIfAuthorized = (user: AccessTokenContent, ttl: TTL): DeletionDelay|never => {
+  const delay = DeletionDelay.getMatchingFor(ttl)
   if (!user.isPermanent && (delay !== DeletionDelay.SHORT && delay !== DeletionDelay.X_SHORT)) {
     throw new Error('Non permanent users can only create short sessions.')
   }
+  return delay
 }

@@ -1,5 +1,4 @@
-// eslint-disable-next-line
-require('dotenv').config();
+require('dotenv').config()
 
 import { CustomContextData } from './types/Context'
 import createProcessors from './utils/EventMessageProcessorCreator'
@@ -9,10 +8,10 @@ import { createAuthMiddleware } from './utils/AuthMiddlewareCreator'
 import typeDefs from './typeDefs/Schema'
 import resolvers from './resolvers/Resolvers'
 import EventHandler from './models/EventHandler'
+import { createRateLimitDirective } from './utils/RateLimitDirective'
+import { gql } from 'apollo-server'
 
-// eslint-disable-next-line
-const { ApolloServer } = require('apollo-server');
-// eslint-disable-next-line
+const { ApolloServer } = require('apollo-server')
 const { buildSubgraphSchema } = require('@apollo/subgraph');
 
 (async (): Promise<void> => {
@@ -23,8 +22,15 @@ const { buildSubgraphSchema } = require('@apollo/subgraph');
   createProcessors(events, db)
   await events.start()
 
+  const { rateLimitDirectiveTypeDefs, rateLimitDirectiveTransformer } = createRateLimitDirective()
+  const subgraph = buildSubgraphSchema({
+    typeDefs: [ typeDefs, gql`${rateLimitDirectiveTypeDefs}` ],
+    resolvers,
+  })
+  const schema = rateLimitDirectiveTransformer(subgraph)
+
   const server = new ApolloServer({
-    schema: buildSubgraphSchema({ typeDefs, resolvers }),
+    schema,
     context: async ({ req }): Promise<CustomContextData> => ({
       currentUser: await authenticate(req),
       db,

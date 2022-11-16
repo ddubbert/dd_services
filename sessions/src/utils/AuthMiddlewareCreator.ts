@@ -14,7 +14,9 @@ type Request = {
 export const createAuthMiddleware = (auth: Authenticator): ResolveUserFn => {
   const resolveUserFn: ResolveUserFn = async (req: Request): Promise<AccessTokenContent|never> => {
     const token = req.headers.authorization
-    if (!token) { return validateUser(null, req) }
+    if (!token) {
+      return validateUser(null, req)
+    }
 
     try {
       return validateUser(await auth.getAccessTokenContent(token), req)
@@ -23,13 +25,15 @@ export const createAuthMiddleware = (auth: Authenticator): ResolveUserFn => {
     }
   }
 
-  const validateUser = (user: Maybe<AccessTokenContent>, req: Request): AccessTokenContent|never => {
+  const validateUser = async (user: Maybe<AccessTokenContent>, req: Request): Promise<AccessTokenContent|never> => {
     const operation = req.body.query
 
     if (!user
       && !operation.includes('IntrospectionQuery')
       && !operation.includes('ApolloGetServiceDefinition')
-    ) { throw new AuthenticationError('Access token not valid or outdated.') }
+    ) {
+      throw new AuthenticationError('Access token not valid or outdated.')
+    }
 
     return user || { userId: 'introspection', isPermanent: false, nickname: 'introspection' }
   }

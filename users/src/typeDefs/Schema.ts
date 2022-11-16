@@ -1,14 +1,14 @@
-import {gql} from 'apollo-server'
+import { gql } from 'apollo-server'
 
 export default gql`
   scalar DateTime
 
-  type Query {
+  type Query @rateLimit(limit: 30, duration: 60){
     allUsers: [User!]!
     currentUser: User!
   }
 
-  type Mutation {
+  type Mutation @rateLimit(limit: 30, duration: 60){
     createOrLoginUser: UserAndAuthenticationDetails!
     refreshAuth(token: String!): AuthenticationDetails!
     deleteUser(userId: String!): DeletionResponse!

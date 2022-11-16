@@ -127,7 +127,7 @@ export const createAuthenticator = (db: UserDatabase): Authenticator => {
       expiresIn: accessExpiresIn,
       refreshExpiresIn,
       tokenType,
-      refreshUri: `http://${process.env.HOST}:${process.env.PORT}/graphql`,
+      refreshUri: `http://${process.env.GATEWAY_HOST}:${process.env.GATEWAY_PORT}/graphql`,
       refreshToken: await createRefreshTokenFor(user, refreshTTL),
     }
 

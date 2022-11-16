@@ -1,4 +1,5 @@
 #!/bin/bash
+rm -rf ./redisCache
 rm -rf ./kafka/data
 rm -rf ./dbs/leader
 rm -rf ./dbs/backup_1
