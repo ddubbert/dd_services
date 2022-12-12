@@ -1,10 +1,10 @@
 require('dotenv').config();
 
+import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default'
 import { RemoteGraphQLDataSource } from '@apollo/gateway'
-const express = require('express');
-const { ApolloServer } = require('apollo-server-express');
-const { ApolloGateway, IntrospectAndCompose } = require('@apollo/gateway');
-import { createProxyMiddleware } from 'http-proxy-middleware';
+import { ApolloServer } from '@apollo/server'
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { ApolloGateway, IntrospectAndCompose } from '@apollo/gateway'
 
 class AuthenticatedDataSource extends RemoteGraphQLDataSource {
   willSendRequest({ request, context }) {
@@ -12,50 +12,46 @@ class AuthenticatedDataSource extends RemoteGraphQLDataSource {
       request.http.headers.set('authorization', context.req.headers.authorization);
       // request.https.headers.set('authorization', context.req.headers.authorization);
     }
+    if (context?.req?.headers['x-forwarded-for']) {
+      request.http.headers.set('x-forwarded-for', context.req.headers['x-forwarded-for']);
+    }
   }
 }
 
 (async () => {
+  console.log(process.env.USERS_URL)
+  console.log(process.env.SESSIONS_URL)
+  console.log(process.env.FILES_URL)
   const gateway = new ApolloGateway({
     supergraphSdl: new IntrospectAndCompose({
       subgraphs: [
-        { name: 'users', url: 'http://users' },
-        { name: 'files', url: 'http://files/graphql' },
-        { name: 'sessions', url: 'http://sessions' },
+        { name: 'users', url: process.env.USERS_URL ?? 'http://users' },
+        { name: 'files', url: process.env.FILES_URL ?? 'http://files' },
+        { name: 'sessions', url: process.env.SESSIONS_URL ?? 'http://sessions' },
         // ...additional subgraphs...
       ],
+      introspectionHeaders: {
+        Authorization: `Bearer ${process.env.INTROSPECTION_BEARER_TOKEN ?? 'abc123'}`
+      }
     }),
-    buildService: ({ _name, url }) => {
+    buildService: ({ url }) => {
       return new AuthenticatedDataSource({ url });
     },
   });
 
   const server = new ApolloServer({
     gateway,
-    // Subscriptions are not currently supported in Apollo Federation
+    introspection: true,
+    csrfPrevention: true,
+    plugins: [ ApolloServerPluginLandingPageLocalDefault({ footer: false }) ],
+  });
+
+  await startStandaloneServer(server, {
+    listen: { port: +(process.env.PORT ?? 80) },
     context: async ({ req }) => {
       return { req };
     },
-    subscriptions: false,
-    introspection: true,
-    playground: true
   });
 
-  await server.start()
-
-  const app = express()
-
-  app.use(
-    '/static',
-    createProxyMiddleware({
-      target: 'http://files',
-      changeOrigin: false,
-    })
-  );
-
-  server.applyMiddleware({ app });
-
-  await new Promise<void>(r => app.listen({ port: 80 }, r));
-
-  console.log(`🚀 Server ready at http://localhost:80${server.graphqlPath}`);
+  console.log(`🚀 Server ready at http://${process.env.HOST}:${process.env.PORT}/graphql`)
 })()

@@ -38,6 +38,7 @@ rm -f ./users/refreshKey.pem
 rm -f ./users/accessPublicKey.pem
 rm -f ./users/refreshPublicKey.pem
 rm -f ./files/accessKey.pem
+rm -f ./files/signing.pem
 rm -f ./sessions/accessKey.pem
 openssl genrsa -passout pass:${REFRESH_KEY_PASSPHRASE} -out ./users/refreshKey.pem -aes256 4096
 openssl rsa -passin pass:${REFRESH_KEY_PASSPHRASE} -pubout -in ./users/refreshKey.pem -out ./users/refreshPublicKey.pem
@@ -46,6 +47,8 @@ openssl genrsa -passout pass:${ACCESS_KEY_PASSPHRASE} -out ./users/accessKey.pem
 openssl rsa -passin pass:${ACCESS_KEY_PASSPHRASE} -pubout -in ./users/accessKey.pem -out ./users/accessPublicKey.pem
 cp ./users/accessPublicKey.pem ./sessions/accessKey.pem
 cp ./sessions/accessKey.pem ./files/accessKey.pem
+
+openssl rand -base64 128 -out ./files/signing.pem
 
 docker-compose up -d
 

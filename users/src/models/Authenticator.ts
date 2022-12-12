@@ -12,7 +12,11 @@ import axios from 'axios'
 import { AuthMethod } from '../types/auth/AuthMethod'
 import { createPrivateKey, createPublicKey } from 'crypto'
 import moment from 'moment/moment'
+import { Request, RequestHandler } from 'express'
+import { Maybe } from '@graphql-tools/utils'
 const keycloak = require('../../keycloak.json')
+
+type ResolveUserFn = (req: Request) => Promise<UserAuth|never>
 
 export const createAuthenticator = (db: UserDatabase): Authenticator => {
   const accessKey = createPrivateKey({
@@ -30,9 +34,10 @@ export const createAuthenticator = (db: UserDatabase): Authenticator => {
     key: fs.readFileSync('./refreshPublicKey.pem'),
   })
   const tokenType = 'bearer'
-  const accessExpiresIn = 15 * 60 // In seconds
-  const refreshExpiresIn = 4 * 15 * 60 // In seconds
+  const accessExpiresIn = +(process.env.ACCESS_TOKEN_TTL ?? 15 * 60) // In seconds
+  const refreshExpiresIn = +(process.env.REFRESH_TOKEN_TTL ?? 4 * 15 * 60) // In seconds
   const algorithm = 'RS256'
+  const DEFAULT_USER = { userId: 'none', nickname: 'none', isPermanent: false, authMethod: AuthMethod.NONE }
 
   const getKeycloakInfoFor = async (token: string): Promise<UserAuth> => {
     const url = `${keycloak['auth-server-url']}/auth/realms/${keycloak.realm}/protocol/openid-connect/userinfo`
@@ -60,6 +65,8 @@ export const createAuthenticator = (db: UserDatabase): Authenticator => {
   const sliceToken = (token: string): string => token.startsWith('Bearer')
     ? token.slice(6, token.length).replace(' ', '')
     : token
+
+  const isGatewayToken = (token: string): boolean => sliceToken(token) === process.env.GATEWAY_BEARER_TOKEN
 
   const getAccessTokenContent = (token: string): AccessTokenContent => {
     try{
@@ -121,18 +128,14 @@ export const createAuthenticator = (db: UserDatabase): Authenticator => {
 
   const createAuthFor = async (user: User,
                                accessTTL: number = accessExpiresIn,
-                               refreshTTL: number = refreshExpiresIn): Promise<AuthenticationDetails> => {
-    const auth = {
-      accessToken: createAccessTokenFor(user, accessTTL),
-      expiresIn: accessExpiresIn,
-      refreshExpiresIn,
-      tokenType,
-      refreshUri: `http://${process.env.GATEWAY_HOST}:${process.env.GATEWAY_PORT}/graphql`,
-      refreshToken: await createRefreshTokenFor(user, refreshTTL),
-    }
-
-    return auth
-  }
+                               refreshTTL: number = refreshExpiresIn): Promise<AuthenticationDetails> => ({
+    accessToken: createAccessTokenFor(user, accessTTL),
+    expiresIn: accessExpiresIn,
+    refreshExpiresIn,
+    tokenType,
+    refreshUri: `http://${process.env.GATEWAY_HOST}:${process.env.GATEWAY_PORT}/graphql`,
+    refreshToken: await createRefreshTokenFor(user, refreshTTL),
+  })
 
   const getVerifiedAccessTokenContent = async (token: string): Promise<AccessTokenContent|never> => {
     const content = getAccessTokenContent(token)
@@ -155,6 +158,50 @@ export const createAuthenticator = (db: UserDatabase): Authenticator => {
     return createAuthFor(user)
   }
 
+  const getDDServiceAuthInfoFor = async (token: string): Promise<UserAuth> => ({
+    ...(await getVerifiedAccessTokenContent(token)),
+    authMethod: AuthMethod.DD_SERVICES,
+  })
+
+  const resolveUser: ResolveUserFn = async (req: Request): Promise<UserAuth|never> => {
+    const token = req.headers.authorization
+    if (!token) { return validateUser(null, req) }
+
+    if (isGatewayToken(token)) { return validateUser(DEFAULT_USER, req) }
+
+    try {
+      return validateUser(await getDDServiceAuthInfoFor(token), req)
+    } catch (_e) {
+      try {
+        return validateUser(await getKeycloakInfoFor(token), req)
+      } catch (er) {
+        return validateUser(null, req)
+      }
+    }
+  }
+
+  const validateUser = async (user: Maybe<UserAuth>, req: Request): Promise<UserAuth|never> => {
+    const operation = req.body.query
+
+    if (!user
+      // && !operation.includes('IntrospectionQuery')
+      // && !operation.includes('ApolloGetServiceDefinition')
+      && !operation?.includes('createOrLoginUser')
+      && !operation?.includes('refreshAuth')
+    ) { throw new AuthenticationError('Access token not valid or outdated.') }
+
+    return user || DEFAULT_USER
+  }
+
+  const expressMiddleware: RequestHandler = async (req, res, next) => {
+    try {
+      req.currentUser = await resolveUser(req)
+      next()
+    } catch (e) {
+      next(e)
+    }
+  }
+
   return {
     getKeycloakInfoFor,
     getAccessTokenContent,
@@ -162,6 +209,9 @@ export const createAuthenticator = (db: UserDatabase): Authenticator => {
     createAuthFor,
     verifyAndRenewAuth,
     getVerifiedAccessTokenContent,
+    isGatewayToken,
+    resolveUser,
+    expressMiddleware,
   } as Authenticator
 }
 
@@ -174,4 +224,7 @@ export interface Authenticator {
   createAuthFor: (user: User, accessTTL?: number, refreshTTL?: number) => Promise<AuthenticationDetails>
   verifyAndRenewAuth: (refreshToken: string) => Promise<AuthenticationDetails>
   getVerifiedAccessTokenContent: (token: string) => Promise<AccessTokenContent|never>
+  isGatewayToken: (token: string) => boolean
+  resolveUser: ResolveUserFn
+  expressMiddleware: RequestHandler
 }
