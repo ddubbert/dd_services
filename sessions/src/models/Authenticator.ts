@@ -3,6 +3,12 @@ import * as fs from 'fs'
 import { AuthenticationError } from 'apollo-server'
 import { AccessTokenContent, verifyAccessTokenContent } from '../types/AccessTokenContent'
 import { createPublicKey } from 'crypto'
+import { Request, RequestHandler } from 'express'
+import { Maybe } from '@graphql-tools/utils'
+
+type ResolveUserFn = (req: Request) => Promise<AccessTokenContent|never>
+
+const GATEWAY = { userId: 'gateway', nickname: 'gateway', isPermanent: false }
 
 export const createAuthenticator = (): Authenticator => {
   const accessPublicKey = createPublicKey({
@@ -13,6 +19,8 @@ export const createAuthenticator = (): Authenticator => {
   const sliceToken = (token: string): string => token.startsWith('Bearer')
     ? token.slice(6, token.length).replace(' ', '')
     : token
+
+  const isGatewayToken = (token: string): boolean => sliceToken(token) === process.env.GATEWAY_BEARER_TOKEN
 
   const getAccessTokenContent = (token: string): AccessTokenContent => {
     try{
@@ -28,8 +36,45 @@ export const createAuthenticator = (): Authenticator => {
     }
   }
 
+  const resolveUser: ResolveUserFn = async (req: Request): Promise<AccessTokenContent|never> => {
+    const token = req.headers.authorization
+    if (!token) {
+      return validateUser(null)
+    }
+
+    if (isGatewayToken(token)) {
+      return validateUser(GATEWAY)
+    }
+
+    try {
+      return validateUser(await getAccessTokenContent(token))
+    } catch (_e) {
+      return validateUser(null)
+    }
+  }
+
+  const validateUser = async (user: Maybe<AccessTokenContent>): Promise<AccessTokenContent|never> => {
+    if (!user) {
+      throw new AuthenticationError('Access token not valid or outdated.')
+    }
+
+    return user
+  }
+
+  const expressMiddleware: RequestHandler = async (req, res, next) => {
+    try {
+      req.currentUser = await resolveUser(req)
+      next()
+    } catch (e) {
+      next(e)
+    }
+  }
+
   return {
     getAccessTokenContent,
+    isGatewayToken,
+    resolveUser,
+    expressMiddleware,
   } as Authenticator
 }
 
@@ -37,4 +82,7 @@ export default createAuthenticator
 
 export interface Authenticator {
   getAccessTokenContent: (token: string) => AccessTokenContent
+  isGatewayToken: (token: string) => boolean
+  resolveUser: (req: Request) => Promise<AccessTokenContent|never>
+  expressMiddleware: RequestHandler
 }

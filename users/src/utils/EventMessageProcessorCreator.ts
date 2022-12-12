@@ -27,7 +27,20 @@ export const createProcessors = (eventHandler: EventHandler, db: UserDatabase): 
     }
   }
 
-  eventHandler.addMessageProcessorFor(KafkaTopic.SESSIONS, sessionDeleted)
+  const allEvents: EventMessageProcessor = async (message: EventMessage) => {
+    console.log('Event received:')
+    console.log(message.message)
+    console.log(message.event)
+    console.log(message.entity)
+    console.log('')
+  }
+
+  // eventHandler.addMessageProcessorFor(KafkaTopic.SESSIONS, sessionDeleted)
+  eventHandler.addMessageProcessorFor(KafkaTopic.FILES, allEvents)
+  eventHandler.addMessageProcessorFor(KafkaTopic.SESSIONS, allEvents)
+  eventHandler.addMessageProcessorFor(KafkaTopic.USERS, allEvents)
+  // TODO:
+  // Maybe send emails on events?
 }
 
 export default createProcessors

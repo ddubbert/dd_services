@@ -18,7 +18,11 @@ COPY prisma ./prisma/
 
 COPY accessKey.pem ./
 
+COPY signing.pem ./
+
 COPY src ./src/
+
+COPY public ./public/
 
 RUN yarn install
 

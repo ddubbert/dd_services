@@ -8,10 +8,10 @@ export default gql`
     currentUser: User!
   }
 
-  type Mutation @rateLimit(limit: 30, duration: 60){
-    createOrLoginUser: UserAndAuthenticationDetails!
+  type Mutation {
+    createOrLoginUser: UserAndAuthenticationDetails! @rateLimit(limit: 200, duration: 60)
     refreshAuth(token: String!): AuthenticationDetails!
-    deleteUser(userId: String!): DeletionResponse!
+    deleteUser(userId: String!): DeletionResponse! @rateLimit(limit: 30, duration: 60)
   }
     
   type User @key(fields: "id") {

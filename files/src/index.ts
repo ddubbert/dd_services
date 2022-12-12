@@ -1,30 +1,27 @@
-require('dotenv').config();
-const path = require('path')
-const express = require('express');
-const { ApolloServer } = require('apollo-server-express');
-const { buildSubgraphSchema } = require('@apollo/subgraph');
-import typeDefs from './typeDefs/schema';
-import resolvers from './resolvers/resolvers';
+require('dotenv').config()
 
-(async () => {
-  const server = new ApolloServer({
-    schema: buildSubgraphSchema({ typeDefs, resolvers }),
-    // Subscriptions are not currently supported in Apollo Federation
-    subscriptions: false,
-    introspection: true,
-    playground: true,
-    csrfPrevention: true
-  });
+import { startGraphQLServer } from './models/GraphQLServer'
+import { addUploadListener } from './utils/UploadListener'
+import createUserSessionDB from './models/UserSessionDatabase'
+import EventHandler from './models/EventHandler'
+import createAuthenticator from './models/Authenticator'
+import createFileDB from './models/FileDatabase'
+import createProcessors from './models/EventMessageProcessorCreator'
+import { createSigner } from './models/URLSigner'
+import { createUploadHandler } from './models/UploadHandler'
+import { startExpressFileServer } from './models/ExpressFileServer';
 
-  await server.start()
+(async (): Promise<void> => {
+  const events = new EventHandler()
+  const uploadHandler = createUploadHandler()
+  const fileDB = await createFileDB(events, uploadHandler)
+  const userSessionDB = await createUserSessionDB()
+  const signer = createSigner()
+  addUploadListener(uploadHandler, fileDB)
+  const auth = createAuthenticator()
+  createProcessors(events, fileDB, userSessionDB)
+  await events.start()
 
-  const app = express()
-
-  app.use('/static', express.static(path.join(__dirname, '../public')))
-
-  server.applyMiddleware({ app });
-
-  await new Promise<void>(r => app.listen({ port: 80 }, r));
-
-  console.log(`🚀 Server ready at http://${process.env.HOST}:${process.env.PORT}${server.graphqlPath}`);
+  await startGraphQLServer(events, fileDB, userSessionDB, auth, signer, uploadHandler)
+  await startExpressFileServer(fileDB, userSessionDB, auth, signer, uploadHandler)
 })()

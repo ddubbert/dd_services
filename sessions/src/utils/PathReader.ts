@@ -23,17 +23,5 @@ export const depthLimitedReferenceResolver = (fun: ReferenceResolverFn, maxDepth
     if (getDepthFromInfo(info) > maxDepth) {
       throw new MaxDepthError('Maximum depth reached.')
     }
-    return fun(reference, context, info)
+    return fun(reference, context, info, info)
   }
-
-// type PromiseContent<T extends (...args: any) => Promise<any>> = T extends (...args: any) => Promise<infer R> ? R : any
-// type ReturnAsyncFunction<T extends (...args: any) => Promise<any>> = (...args: Parameters<T>) => Promise<PromiseContent<T>>
-//
-// export const depthLimited = <T extends (...args: any[]) => Promise<any>>(fun: T, maxDepth: number = MAX_DEPTH): ReturnAsyncFunction<T> =>
-//   async (...args: Parameters<T>): Promise<PromiseContent<T>> => {
-//     const info = args[args.length - 1]
-//     if (getDepthFromInfo(info) > maxDepth) {
-//       throw new Error('Maximum depth reached.')
-//     }
-//     return fun(args)
-//   }
