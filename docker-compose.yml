@@ -40,6 +40,8 @@ services:
     image: dd_services/users
     build:
         context: ./users
+    ports:
+      - ${USERS_PORT}:${USERS_PORT}
     environment:
       - HOST=${USERS_HOST}
       - PORT=${USERS_PORT}
@@ -51,12 +53,15 @@ services:
       - DB_PASSWORD=${USERS_DATABASE_PASSWORD}
       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
       - REFRESH_KEY_PASSPHRASE=${REFRESH_KEY_PASSPHRASE}
+      - ACCESS_TOKEN_TTL=${ACCESS_TOKEN_TTL}
+      - REFRESH_TOKEN_TTL=${REFRESH_TOKEN_TTL}
       - KAFKA_URL=kafka_1:9092
       - CACHE_HOST=${CACHE_HOST}
       - CACHE_PORT=${CACHE_PORT}
       - CACHE_PASSWORD=${CACHE_PASSWORD}
       - GATEWAY_HOST=${GATEWAY_HOST}
       - GATEWAY_PORT=${GATEWAY_PORT}
+      - GATEWAY_BEARER_TOKEN=${GATEWAY_BEARER_TOKEN}
     volumes:
       - users:/services/users
     links:
@@ -78,7 +83,7 @@ services:
     build:
         context: ./files
     ports:
-      - ${FILES_UPLOAD_PORT}:80
+      - ${FILES_UPLOAD_PORT}:${FILES_UPLOAD_PORT}
     volumes:
       - files:/services/files
     links:
@@ -86,11 +91,14 @@ services:
     environment:
       - HOST=${FILES_HOST}
       - PORT=${FILES_PORT}
+      - UPLOAD_HOST=${FILES_UPLOAD_HOST}
       - UPLOAD_PORT=${FILES_UPLOAD_PORT}
+      - UPLOAD_LINK_TTL=${UPLOAD_LINK_TTL}
       - DB_URL=mongodb://${FILES_DATABASE_USER}:${FILES_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${FILES_DATABASE_NAME}
       - DB_HOST=${DATABASE_HOST}
       - DB_PORT=${DATABASE_PORT}
       - DB_DATABASE=${FILES_DATABASE_NAME}
+      - DB_COLLECTION_NAME_USER_SESSIONS=${FILES_USER_SESSION_DATABASE_NAME}
       - DB_USER=${FILES_DATABASE_USER}
       - DB_PASSWORD=${FILES_DATABASE_PASSWORD}
       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
@@ -98,6 +106,7 @@ services:
       - CACHE_HOST=${CACHE_HOST}
       - CACHE_PORT=${CACHE_PORT}
       - CACHE_PASSWORD=${CACHE_PASSWORD}
+      - GATEWAY_BEARER_TOKEN=${GATEWAY_BEARER_TOKEN}
     depends_on:
       - leader_db
       - redisCache
@@ -114,6 +123,8 @@ services:
     image: dd_services/sessions
     build:
         context: ./sessions
+    ports:
+      - ${SESSIONS_PORT}:${SESSIONS_PORT}
     volumes:
       - sessions:/services/sessions
     links:
@@ -132,6 +143,7 @@ services:
       - CACHE_HOST=${CACHE_HOST}
       - CACHE_PORT=${CACHE_PORT}
       - CACHE_PASSWORD=${CACHE_PASSWORD}
+      - GATEWAY_BEARER_TOKEN=${GATEWAY_BEARER_TOKEN}
     depends_on:
       - leader_db
       - redisCache
@@ -152,6 +164,12 @@ services:
     volumes:
       # - ./gateway:/services/gateway
       - gateway:/services/gateway
+    environment:
+      - HOST=${GATEWAY_HOST}
+      - PORT=${GATEWAY_PORT}
+      - SESSIONS_URL=http://${SESSIONS_HOST}:${SESSIONS_PORT}/graphql
+      - FILES_URL=http://${FILES_HOST}:${FILES_PORT}/graphql
+      - USERS_URL=http://${USERS_HOST}:${USERS_PORT}/graphql
     networks:
       - kafka
       - services
@@ -182,9 +200,11 @@ services:
       - FILES_DATABASE_NAME=${FILES_DATABASE_NAME}
       - FILES_DATABASE_USER=${FILES_DATABASE_USER}
       - FILES_DATABASE_PASSWORD=${FILES_DATABASE_PASSWORD}
+      - FILES_USER_SESSION_DATABASE_NAME=${FILES_USER_SESSION_DATABASE_NAME}
       - SESSIONS_DATABASE_NAME=${SESSIONS_DATABASE_NAME}
       - SESSIONS_DATABASE_USER=${SESSIONS_DATABASE_USER}
       - SESSIONS_DATABASE_PASSWORD=${SESSIONS_DATABASE_PASSWORD}
+      - INTROSPECTION_BEARER_TOKEN=${GATEWAY_BEARER_TOKEN}
     expose:
         - ${DATABASE_PORT}
     restart: always

@@ -10,21 +10,25 @@ datasource db {
 
 model File {
     id              String      @id @default(auto()) @map("_id") @db.ObjectId
+    localId         String      @unique
     name            String
     description     String
-    path            String
-    type            FileType    @default(ERROR)
-    owner           String      @db.ObjectId
-    createdAt       String
-    updatedAt       String
+    type            String
+    size            Float
+    creator         String
+    owner           String?
+    sessions        String[]    @default([])
+    permanent       Boolean     @default(false)
+    createdAt       DateTime    @default(now())
+    updatedAt       DateTime    @default(now())
 
     @@map("files")
 }
 
-enum FileType {
-  TEXT
-  IMAGE
-  AUDIO
-  PDF
-  ERROR
+model UserSession {
+    id              String      @id @default(auto()) @map("_id") @db.ObjectId
+    session         String      @unique
+    users           String[]    @default([])
+
+    @@map("userSessions")
 }

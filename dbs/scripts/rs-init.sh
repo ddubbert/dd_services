@@ -42,7 +42,7 @@ db.auth("$MONGO_INITDB_ROOT_USERNAME", "$MONGO_INITDB_ROOT_PASSWORD")
 rs.status()
 
 use $USERS_DATABASE_NAME
-db.createCollection("users", { changeStreamPreAndPostImages: { enabled: true } })
+db.createCollection("$USERS_DATABASE_NAME", { changeStreamPreAndPostImages: { enabled: true } })
 
 db.createUser({
   user: "$USERS_DATABASE_USER",
@@ -51,7 +51,7 @@ db.createUser({
 })
 
 use $FILES_DATABASE_NAME
-db.createCollection("files", { changeStreamPreAndPostImages: { enabled: true } })
+db.createCollection("$FILES_DATABASE_NAME", { changeStreamPreAndPostImages: { enabled: true } })
 
 db.createUser({
   user: "$FILES_DATABASE_USER",
@@ -59,8 +59,17 @@ db.createUser({
   roles: [{ role: "readWrite", db: "$FILES_DATABASE_NAME" }]
 })
 
+use $FILES_USER_SESSION_DATABASE_NAME
+db.createCollection("$FILES_USER_SESSION_DATABASE_NAME", { changeStreamPreAndPostImages: { enabled: true } })
+
+db.createUser({
+  user: "$FILES_DATABASE_USER",
+  pwd: "$FILES_DATABASE_PASSWORD",
+  roles: [{ role: "readWrite", db: "$FILES_USER_SESSION_DATABASE_NAME" }]
+})
+
 use $SESSIONS_DATABASE_NAME
-db.createCollection("sessions", { changeStreamPreAndPostImages: { enabled: true } })
+db.createCollection("$SESSIONS_DATABASE_NAME", { changeStreamPreAndPostImages: { enabled: true } })
 
 db.createUser({
   user: "$SESSIONS_DATABASE_USER",

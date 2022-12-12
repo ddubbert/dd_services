@@ -3,12 +3,14 @@ import { ExecutionContext } from 'graphql/execution/execute'
 import { Authenticator } from '../models/Authenticator'
 import EventHandler from '../models/EventHandler'
 import { AccessTokenContent } from './AccessTokenContent'
+import { Request } from 'express'
 
 export interface CustomContextData {
   currentUser: AccessTokenContent
   db: SessionDatabase
   auth: Authenticator
   events: EventHandler
+  req: Request
 }
 export interface Context extends ExecutionContext, CustomContextData {}
 
@@ -28,5 +30,8 @@ export function verifyContext(data: unknown): asserts data is Context {
   }
   if (!('events' in data)) {
     throw new Error('Decoded context error. Missing required field "events"')
+  }
+  if (!('req' in data)) {
+    throw new Error('Decoded context error. Missing required field "req"')
   }
 }

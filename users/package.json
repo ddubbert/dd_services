@@ -4,11 +4,12 @@
   "description": "Central user management",
   "main": "src/index.ts",
   "scripts": {
-    "start": "ts-node src/index.ts"
+    "start": "ts-node --files src/index.ts"
   },
   "author": "Dennis Dubbert",
   "license": "MIT",
   "dependencies": {
+    "@apollo/server": "^4.2.2",
     "@apollo/subgraph": "^2.0.5",
     "@prisma/client": "^4.4.0",
     "apollo-server": "^3.10.0",
