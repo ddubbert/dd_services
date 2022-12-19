@@ -1,1 +1,0 @@
-db.createUser({ user: "filesDatabaseUser", pwd: "filesDatabasePW", roles: [{ role: "readWrite", db: "userSessions" }] })ity": 2 }, { "_id": 2, "host": "backup_db_1:27017", "priority": 1 }, { "_id": 3, "host": "backup_db_2:27017", "priority": 1 }] };

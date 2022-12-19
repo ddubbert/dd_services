@@ -10,4 +10,5 @@ rm -f ./users/refreshKey.pem
 rm -f ./users/accessPublicKey.pem
 rm -f ./users/refreshPublicKey.pem
 rm -f ./files/accessKey.pem
+rm -f ./files/signing.pem
 rm -f ./sessions/accessKey.pem
