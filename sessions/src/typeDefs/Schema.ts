@@ -3,12 +3,12 @@ import { gql } from 'apollo-server'
 export default gql`
   scalar DateTime
 
-  type Query @rateLimit(limit: 30, duration: 60){
+  type Query @rateLimit(limit: 60, duration: 60){
     allSessions: [Session!]!
     getSession(sessionId: ID!): Session!
   }
 
-  type Mutation @rateLimit(limit: 30, duration: 60){
+  type Mutation @rateLimit(limit: 60, duration: 60){
     createSession(input: SessionCreateInput!): Session!
     addParticipantsToSession(sessionId: ID!, userIds: [ID!]!): Session!
     addOwnersToSession(sessionId: ID!, userIds: [ID!]!): Session!
@@ -29,6 +29,7 @@ export default gql`
 
   type Session @key(fields: "id") {
     id: ID!
+    adminId: ID
     title: String!
     owners: [User]!
     participants: [User]

@@ -137,10 +137,10 @@ export default {
     files: depthLimitedFieldResolver(
       async (user, args, context) => {
         if (user.id !== context.currentUser.userId) {
-          // throw new ForbiddenError('User is not authorized to view files of requested user.')
-          return null
+          throw new ForbiddenError('User is not authorized to view files of requested user.')
         }
-        return await context.fileDB.getFiles({ owner: user.id })
+        const files: File[] = await context.fileDB.getFiles({ owner: user.id })
+        return !files.length ? null : files
       }
     ),
   },

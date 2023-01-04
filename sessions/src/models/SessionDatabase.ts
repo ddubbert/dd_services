@@ -42,6 +42,7 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
     sessionsChangeStream.on('change', async next => {
       switch (next.operationType) {
       case 'insert': {
+        console.log('DB-Event: session created')
         const entity: Entity = { type: EntityType.SESSION, id: next.documentKey._id.toString() }
         const doc = next.fullDocument
         doc.id = doc._id
@@ -56,6 +57,7 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
         break
       }
       case 'update': {
+        console.log('DB-Event: session updated')
         const id = next.documentKey._id.toString()
         const entity: Entity = { type: EntityType.SESSION, id }
         const doc = next.fullDocument
@@ -77,6 +79,7 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
         break
       }
       case 'delete': {
+        console.log('DB-Event: session deleted')
         const entity: Entity = { type: EntityType.SESSION, id: next.documentKey._id.toString() }
         const doc = next.fullDocumentBeforeChange
 
@@ -199,6 +202,13 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
         $pullAll: { participants: users, owners: users },
         $currentDate: { updatedAt: true },
       },
+    },
+    {
+      q: { parentSession: { $eq: session.id } },
+      u: {
+        $pullAll: { participants: users, owners: users },
+        $currentDate: { updatedAt: true },
+      },
     } ]
 
     const payload = await (createRawCommand({ update: 'sessions', updates }))()
@@ -230,10 +240,11 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
       },
     } ]
 
-    if (session.parentSession) { newUsers.forEach(newUser => updates.push({
-      q: { _id: { $eq: { $oid: session.parentSession } }, owners: { $nin: [ newUser ] } },
-      u: { $addToSet: { participants: newUser }, $currentDate: { updatedAt: true } },
-    }))
+    if (session.parentSession) {
+      newUsers.forEach(newUser => updates.push({
+        q: { _id: { $eq: { $oid: session.parentSession } }, owners: { $nin: [ newUser ] } },
+        u: { $addToSet: { participants: newUser }, $currentDate: { updatedAt: true } },
+      }))
     }
 
     return createRawCommand({ update: 'sessions', updates })

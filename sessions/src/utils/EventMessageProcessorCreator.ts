@@ -11,8 +11,7 @@ export const createProcessors = (eventHandler: EventHandler, db: SessionDatabase
       const userId = message.entity.id
 
       try{
-        const answer = await db.removeUsersFromAllSessions([ userId ])
-        console.log(answer)
+        await db.removeUsersFromAllSessions([ userId ])
       } catch (e) {
         console.log('Nothing deleted.')
       }
