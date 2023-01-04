@@ -1,0 +1,1859 @@
+{
+	"info": {
+		"_postman_id": "e459effb-bb05-47f5-a6c3-ff413a8b2d28",
+		"name": "dd_services",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "user tests",
+			"item": [
+				{
+					"name": "Create User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.user).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.authenticationDetails).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Ad hoc user should be created', function() {",
+									"    pm.expect(jsonData.data.createOrLoginUser.user.isPermanent).to.be.false;",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"user\", jsonData.data.createOrLoginUser.user);",
+									"pm.collectionVariables.set(\"auth\", \"Bearer \" + jsonData.data.createOrLoginUser.authenticationDetails.accessToken);",
+									"pm.collectionVariables.set(\"refreshToken\", jsonData.data.createOrLoginUser.authenticationDetails.refreshToken);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation {\n  createOrLoginUser {\n    user {\n      ...UserFrag\n    }\n    authenticationDetails {\n      ...AuthFrag\n    }\n  }\n}\n\n\nfragment AuthFrag on AuthenticationDetails {\n  accessToken\n  tokenType\n  expiresIn\n  refreshExpiresIn\n  refreshToken\n  refreshUri\n}\n\n\nfragment UserFrag on User {\n  id\n  email\n  isPermanent\n  nickname\n  createdAt\n  updatedAt\n  sessions {\n    ...SessionFrag\n  }\n  files {\n    ...FileFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update RefreshToken",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with login data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.user).to.not.be.null;",
+									"    pm.expect(jsonData.data.authenticationDetails).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Should have returned new authentication data', function() {",
+									"    pm.expect(jsonData.data.accessToken).to.not.be.null;",
+									"    pm.expect(jsonData.data.expiresIn).to.not.be.null;",
+									"    pm.expect(jsonData.data.accessToken).to.not.be.null;",
+									"    pm.expect(jsonData.data.refreshExpiresIn).to.not.be.null;",
+									"    pm.expect(jsonData.data.refreshToken).to.not.be.null;",
+									"    pm.expect(jsonData.data.refreshUri).to.not.be.null;",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"auth\", \"Bearer \" + jsonData.data.refreshAuth.accessToken);",
+									"pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshAuth.refreshToken);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation ($refreshToken: String!) {\n  refreshAuth(token: $refreshToken) {\n    accessToken\n    tokenType\n    expiresIn\n    refreshExpiresIn\n    refreshToken\n    refreshUri\n  }\n}\n",
+								"variables": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Users",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with user data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.allUsers).to.not.be.null;",
+									"    pm.expect(jsonData.data.allUsers.length).to.be.greaterThan(0);",
+									"})",
+									"",
+									"pm.test('Correct users should be returned', function() {",
+									"    pm.expect(jsonData.data.allUsers.filter((it) => it.id === pm.collectionVariables.get(\"user\").id).length).to.equal(1);",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query {\n  allUsers {\n    ...UserFrag\n  }\n}\n\nfragment UserFrag on User {\n  id\n  email\n  isPermanent\n  nickname\n  createdAt\n  updatedAt\n  sessions {\n    ...SessionFrag\n  }\n  files {\n    ...FileFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Current user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with user data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.currentUser).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Correct user should be returned', function() {",
+									"    pm.expect(jsonData.data.currentUser.id).to.equal(pm.collectionVariables.get(\"user\").id);",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query {\n  currentUser {\n    ...UserFrag\n  }\n}\n\nfragment UserFrag on User {\n  id\n  email\n  isPermanent\n  nickname\n  createdAt\n  updatedAt\n  sessions {\n    ...SessionFrag\n  }\n  files {\n    ...FileFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Session tests",
+			"item": [
+				{
+					"name": "Create User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.user).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.authenticationDetails).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Ad hoc user should be created', function() {",
+									"    pm.expect(jsonData.data.createOrLoginUser.user.isPermanent).to.be.false;",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"user\", jsonData.data.createOrLoginUser.user);",
+									"pm.collectionVariables.set(\"auth\", \"Bearer \" + jsonData.data.createOrLoginUser.authenticationDetails.accessToken);",
+									"pm.collectionVariables.set(\"refreshToken\", jsonData.data.createOrLoginUser.authenticationDetails.refreshToken);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation {\n  createOrLoginUser {\n    user {\n      ...UserFrag\n    }\n    authenticationDetails {\n      ...AuthFrag\n    }\n  }\n}\n\n\nfragment AuthFrag on AuthenticationDetails {\n  accessToken\n  tokenType\n  expiresIn\n  refreshExpiresIn\n  refreshToken\n  refreshUri\n}\n\n\nfragment UserFrag on User {\n  id\n  email\n  isPermanent\n  nickname\n  createdAt\n  updatedAt\n  sessions {\n    ...SessionFrag\n  }\n  files {\n    ...FileFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.createSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('User should be owner', function() {",
+									"    pm.expect(jsonData.data.createSession.owners.map(it => it.id)).to.contain(pm.collectionVariables.get(\"user\").id);",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"sessionId\", jsonData.data.createSession.id);",
+									"pm.collectionVariables.set(\"sessionAdminId\", jsonData.data.createSession.adminId);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation {\n  createSession(input: { title: \"Penis Party\", ttl: SHORT }) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  adminId\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.getSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Session should be the one with provided id', function() {",
+									"    pm.expect(jsonData.data.getSession.id).to.equal(pm.collectionVariables.get(\"sessionId\"));",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query ($sessionId: ID!) {\n  getSession(sessionId: $sessionId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.createSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('User should be owner', function() {",
+									"    pm.expect(jsonData.data.createSession.owners.map(it => it.id)).to.contain(pm.collectionVariables.get(\"user\").id);",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"childSessionId\", jsonData.data.createSession.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation {\n  createSession(input: { title: \"Penis Party Child\", ttl: SHORT }) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All sessions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.allSessions).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('All sessions should be returned', function() {",
+									"    pm.expect(jsonData.data.allSessions.map(it => it.id)).to.contain((pm.collectionVariables.get(\"sessionId\")));",
+									"    pm.expect(jsonData.data.allSessions.map(it => it.id)).to.contain((pm.collectionVariables.get(\"childSessionId\")));",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query AllSessions {\n  allSessions {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "prolong session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.prolongSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Deletion date should be changed', function() {",
+									"    pm.expect(jsonData.data.prolongSession.deletedAt).to.not.equal(pm.collectionVariables.get(\"session\").deletedAt);",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation ProlongSession($sessionId: ID!) {\n  prolongSession(sessionId: $sessionId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "add child",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.addSessionAsChild).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Correct session should have childSession', function() {",
+									"    pm.expect(jsonData.data.addSessionAsChild.id).to.equal(pm.collectionVariables.get(\"sessionId\"));",
+									"    pm.expect(jsonData.data.addSessionAsChild.childSessions.map(it => it.id)).to.contain(pm.collectionVariables.get(\"childSessionId\"));",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation AddSessionAsChild($sessionId: ID!, $childId: ID!) {\n  addSessionAsChild(parentSession: $sessionId, childSession: $childId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\",\n    \"childId\": \"{{childSessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get session Copy 2",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.getSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Session should be the one with provided id', function() {",
+									"    pm.expect(jsonData.data.getSession.id).to.equal(pm.collectionVariables.get(\"sessionId\"));",
+									"})",
+									"",
+									"pm.test('Session should still have childSession', function() {",
+									"    pm.expect(jsonData.data.getSession.id).to.equal(pm.collectionVariables.get(\"sessionId\"));",
+									"    pm.expect(jsonData.data.getSession.childSessions.map(it => it.id)).to.contain(pm.collectionVariables.get(\"childSessionId\"));",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query ($sessionId: ID!) {\n  getSession(sessionId: $sessionId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Participant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.user).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.authenticationDetails).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Ad hoc user should be created', function() {",
+									"    pm.expect(jsonData.data.createOrLoginUser.user.isPermanent).to.be.false;",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"auth2\", \"Bearer \" + jsonData.data.createOrLoginUser.authenticationDetails.accessToken);",
+									"pm.collectionVariables.set(\"participant\", jsonData.data.createOrLoginUser.user.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation {\n  createOrLoginUser {\n    user {\n      ...UserFrag\n    }\n    authenticationDetails {\n      ...AuthFrag\n    }\n  }\n}\n\n\nfragment AuthFrag on AuthenticationDetails {\n  accessToken\n  tokenType\n  expiresIn\n  refreshExpiresIn\n  refreshToken\n  refreshUri\n}\n\n\nfragment UserFrag on User {\n  id\n  email\n  isPermanent\n  nickname\n  createdAt\n  updatedAt\n  sessions {\n    ...SessionFrag\n  }\n  files {\n    ...FileFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "add participant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.addParticipantsToSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('User should be added as participant', function() {",
+									"    pm.expect(jsonData.data.addParticipantsToSession.participants.map(it => it.id)).to.contain(pm.collectionVariables.get(\"participant\"));",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation AddParticipants($sessionId: ID!, $participantIds: [ID!]!) {\n  addParticipantsToSession(sessionId: $sessionId, userIds: $participantIds) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\",\n    \"participantIds\": [\"{{participant}}\"]\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "add owner",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.addOwnersToSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('User should be added as owner', function() {",
+									"    pm.expect(jsonData.data.addOwnersToSession.owners.map(it => it.id)).to.contain(pm.collectionVariables.get(\"participant\"));",
+									"})",
+									"",
+									"pm.test('User should be removed as participant', function() {",
+									"    pm.expect(jsonData.data.addOwnersToSession.participants).to.be.null;",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation AddOwners($sessionId: ID!, $participantIds: [ID!]!) {\n  addOwnersToSession(sessionId: $sessionId, userIds: $participantIds) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\",\n    \"participantIds\": [\"{{participant}}\"]\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create AdHoc Participant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.user).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.authenticationDetails).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Ad hoc user should be created', function() {",
+									"    pm.expect(jsonData.data.createOrLoginUser.user.isPermanent).to.be.false;",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"adhocUserAuth\", \"Bearer \" + jsonData.data.createOrLoginUser.authenticationDetails.accessToken);",
+									"pm.collectionVariables.set(\"adhocUserId\", jsonData.data.createOrLoginUser.user.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation {\n  createOrLoginUser {\n    user {\n      ...UserFrag\n    }\n    authenticationDetails {\n      ...AuthFrag\n    }\n  }\n}\n\n\nfragment AuthFrag on AuthenticationDetails {\n  accessToken\n  tokenType\n  expiresIn\n  refreshExpiresIn\n  refreshToken\n  refreshUri\n}\n\n\nfragment UserFrag on User {\n  id\n  email\n  isPermanent\n  nickname\n  createdAt\n  updatedAt\n  sessions {\n    ...SessionFrag\n  }\n  files {\n    ...FileFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "join as participant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.joinSessionAsParticipant).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('User should be added as participant', function() {",
+									"    pm.expect(jsonData.data.joinSessionAsParticipant.participants.map(it => it.id)).to.contain(pm.collectionVariables.get(\"adhocUserId\"));",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{adhocUserAuth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation JoinSessionAsParticipant($sessionId: ID!) {\n  joinSessionAsParticipant(sessionId: $sessionId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create AdHoc Owner",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.user).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.authenticationDetails).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Ad hoc user should be created', function() {",
+									"    pm.expect(jsonData.data.createOrLoginUser.user.isPermanent).to.be.false;",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"adhocUserAuth\", \"Bearer \" + jsonData.data.createOrLoginUser.authenticationDetails.accessToken);",
+									"pm.collectionVariables.set(\"adhocUserId\", jsonData.data.createOrLoginUser.user.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation {\n  createOrLoginUser {\n    user {\n      ...UserFrag\n    }\n    authenticationDetails {\n      ...AuthFrag\n    }\n  }\n}\n\n\nfragment AuthFrag on AuthenticationDetails {\n  accessToken\n  tokenType\n  expiresIn\n  refreshExpiresIn\n  refreshToken\n  refreshUri\n}\n\n\nfragment UserFrag on User {\n  id\n  email\n  isPermanent\n  nickname\n  createdAt\n  updatedAt\n  sessions {\n    ...SessionFrag\n  }\n  files {\n    ...FileFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "join as owner",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.joinSessionAsOwner).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('User should be added as owner', function() {",
+									"    pm.expect(jsonData.data.joinSessionAsOwner.owners.map(it => it.id)).to.contain(pm.collectionVariables.get(\"adhocUserId\"));",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{adhocUserAuth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation JoinSessionAsOwner($sessionId: ID!) {\n  joinSessionAsOwner(sessionId: $sessionId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionAdminId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create AdHoc Child Participant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.user).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.authenticationDetails).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Ad hoc user should be created', function() {",
+									"    pm.expect(jsonData.data.createOrLoginUser.user.isPermanent).to.be.false;",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"adhocUserAuth\", \"Bearer \" + jsonData.data.createOrLoginUser.authenticationDetails.accessToken);",
+									"pm.collectionVariables.set(\"adhocUserId\", jsonData.data.createOrLoginUser.user.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation {\n  createOrLoginUser {\n    user {\n      ...UserFrag\n    }\n    authenticationDetails {\n      ...AuthFrag\n    }\n  }\n}\n\n\nfragment AuthFrag on AuthenticationDetails {\n  accessToken\n  tokenType\n  expiresIn\n  refreshExpiresIn\n  refreshToken\n  refreshUri\n}\n\n\nfragment UserFrag on User {\n  id\n  email\n  isPermanent\n  nickname\n  createdAt\n  updatedAt\n  sessions {\n    ...SessionFrag\n  }\n  files {\n    ...FileFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "join child as participant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.joinSessionAsParticipant).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('User should be added as participant', function() {",
+									"    pm.expect(jsonData.data.joinSessionAsParticipant.participants.map(it => it.id)).to.contain(pm.collectionVariables.get(\"adhocUserId\"));",
+									"})",
+									"",
+									"",
+									"pm.test('User should be added as participant in parent too', function() {",
+									"    pm.expect(jsonData.data.joinSessionAsParticipant.parentSession.participants.map(it => it.id)).to.contain(pm.collectionVariables.get(\"adhocUserId\"));",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{adhocUserAuth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation JoinSessionAsParticipant($sessionId: ID!) {\n  joinSessionAsParticipant(sessionId: $sessionId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n        id\n        nickname\n    }\n    participants {\n        id\n        nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{childSessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "remove user from session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.removeUserFromSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('User should have been removed from session', function() {",
+									"    pm.expect(jsonData.data.removeUserFromSession.participants.map(it => it.id)).to.not.contain(pm.collectionVariables.get(\"participant\"));",
+									"})",
+									"",
+									"pm.test('User should have been removed from child too', function() {",
+									"    pm.expect(jsonData.data.removeUserFromSession.childSessions[0].participants.map(it => it.id)).to.not.contain(pm.collectionVariables.get(\"participant\"));",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation RemoveUserFromSession($sessionId: ID!, $participantId: ID!) {\n  removeUserFromSession(sessionId: $sessionId, userId: $participantId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n        id\n      nickname\n    }\n    participants {\n        id\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n        id\n      nickname\n    }\n    participants {\n        id\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\",\n    \"participantId\": \"{{participant}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "leave session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.leaveSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Request should be successfull', function() {",
+									"    pm.expect(jsonData.data.leaveSession.status).to.equal(\"SUCCESSFUL\");",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{adhocUserAuth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation LeaveSession($sessionId: ID!) {\n  leaveSession(sessionId: $sessionId) {\n    message\n    status\n  }\n}\n",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get session Copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.getSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Session should be the one with provided id', function() {",
+									"    pm.expect(jsonData.data.getSession.id).to.equal(pm.collectionVariables.get(\"sessionId\"));",
+									"})",
+									"",
+									"pm.test('Session should be the one with provided id', function() {",
+									"    pm.expect(jsonData.data.getSession.id).to.equal(pm.collectionVariables.get(\"sessionId\"));",
+									"})",
+									"",
+									"pm.test('User should have been removed from session', function() {",
+									"    pm.expect(jsonData.data.getSession.participants.map(it => it.id)).to.not.contain(pm.collectionVariables.get(\"adhocUserId\"));",
+									"})",
+									"",
+									"pm.test('User should have been removed from child too', function() {",
+									"    pm.expect(jsonData.data.getSession.childSessions[0].participants).to.be.null",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query ($sessionId: ID!) {\n  getSession(sessionId: $sessionId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n        id\n      nickname\n    }\n    participants {\n        id\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.deleteSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Request should be successfull', function() {",
+									"    pm.expect(jsonData.data.deleteSession.status).to.equal(\"SUCCESSFUL\");",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation DeleteSession($sessionId: String!) {\n  deleteSession(sessionId: $sessionId) {\n    message\n    status\n  }\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get session Copy 3",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.be.null;",
+									"})",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query ($sessionId: ID!) {\n  getSession(sessionId: $sessionId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "File tests",
+			"item": [
+				{
+					"name": "Create User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"pm.collectionVariables.set(\"auth\", \"Bearer \" + jsonData.data.createOrLoginUser.authenticationDetails.accessToken);",
+									"pm.collectionVariables.set(\"refreshToken\", jsonData.data.createOrLoginUser.authenticationDetails.refreshToken);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation {\n  createOrLoginUser {\n    user {\n      ...UserFrag\n    }\n    authenticationDetails {\n      ...AuthFrag\n    }\n  }\n}\n\n\nfragment AuthFrag on AuthenticationDetails {\n  accessToken\n  tokenType\n  expiresIn\n  refreshExpiresIn\n  refreshToken\n  refreshUri\n}\n\n\nfragment UserFrag on User {\n  id\n  email\n  isPermanent\n  nickname\n  createdAt\n  updatedAt\n  sessions {\n    ...SessionFrag\n  }\n  files {\n    ...FileFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"pm.collectionVariables.set(\"sessionId\", jsonData.data.createSession.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation {\n  createSession(input: { title: \"Penis Party File\", ttl: SHORT }) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create upload link",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"pm.collectionVariables.set(\"uploadLink\", jsonData.data.getFileUploadLink.url);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query ($sessionId: String) {\n  getFileUploadLink(sessionId: $sessionId) {\n    url\n    ttl\n  }\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload files",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file_uploads",
+									"type": "file",
+									"src": "/Users/doener/Desktop/Screenshot 2022-11-21 at 17.32.57.png"
+								},
+								{
+									"key": "file_uploads",
+									"type": "file",
+									"src": "/Users/doener/Desktop/Screenshot 2022-11-27 at 17.17.36.png"
+								},
+								{
+									"key": "file_uploads",
+									"type": "file",
+									"src": "/Users/doener/Desktop/Screenshot 2022-11-27 at 17.33.41.png"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{uploadLink}}",
+							"host": [
+								"{{uploadLink}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "manual",
+			"item": [
+				{
+					"name": "download files",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file_uploads",
+									"type": "file",
+									"src": "/Users/doener/Desktop/Screenshot 2022-11-21 at 17.32.57.png"
+								},
+								{
+									"key": "file_uploads",
+									"type": "file",
+									"src": "/Users/doener/Desktop/Screenshot 2022-11-27 at 17.17.36.png"
+								},
+								{
+									"key": "file_uploads",
+									"type": "file",
+									"src": "/Users/doener/Desktop/Screenshot 2022-11-27 at 17.33.41.png"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{downloadLink}}",
+							"host": [
+								"{{downloadLink}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Download link for session files",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"pm.collectionVariables.set(\"downloadLink\", jsonData.data.getDownloadLinkForFilesOfSession.url);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query ($sessionId: ID!) {\n  getDownloadLinkForFilesOfSession(sessionId: $sessionId) {\n    url\n    ttl\n  }\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "keycloakServer",
+			"value": "https://auth.gm.fh-koeln.de:8444\n",
+			"type": "default"
+		},
+		{
+			"key": "keycloakRealm",
+			"value": "DD_SERVICES",
+			"type": "default"
+		},
+		{
+			"key": "keycloakClient",
+			"value": "dd_services_backend",
+			"type": "default"
+		},
+		{
+			"key": "keycloakSecret",
+			"value": "a4740b91-6aef-4801-8b94-17958e4aef0b",
+			"type": "default"
+		},
+		{
+			"key": "auth",
+			"value": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2M2EwODM0NmM5NGJjYmUyNWE0NmQ0ZTIiLCJuaWNrbmFtZSI6InBoeXNpY2FsIGN5YW4gdGVybWl0ZSIsImlzUGVybWFuZW50IjpmYWxzZSwiaWF0IjoxNjcxNDYzNzUwLCJleHAiOjE2NzE0NjQ2NTB9.T60zrYzNufZVSlcLnM6am1S7tFVvcuNm73hETFS_IWRZkM96Zt5P-0T0vIbvRzDZj5Tva4VOOq7tokRE0w5HzBM6Y9XFoj2e09OkZz8JO8AzJSoevQvr_URGew51yXBYv9irIjqM0vtYrXViDIWjdM0CSEkJVkcUwSBM_0qOs3V9GpE9TgyTTgbUo_kzaKYJIPnRxz2qbNMGyE_kwacD4Mkq6qQfrj2egX8nRc4WopdostwuplH92S6qtcPZehcW-rKK8nAEgAERtEJE45uAtg4MuM0DERHMWpBPMGw8KaTKKQ1Mnt2NqUCaDYsZkhOfQawJeuIehXAJEjVU9pD2hh4CFbwKTQhLamctIJhao3yoIEwMCnRNwEBWNT5GBdCCxtWa0Ej0R6AHHN6Sd7scCzQrVxYfEJQbHMjTEBbxKKihm0b4Nif_b4zk94n3NGYAzNGyaAGN37HCWvitvwDl_78hhzQMOIQqFDaNH6jRNJmrsoE8tW8ZgcptqZWxo3pV1xAVGnZ0Hhb220wP5kKH6AwrWxdHMQshrZXap02XpImrlQztNd38wn5GW4vtjmtFGzLdva1cmgE20RQj70snQNYVBwyZAXrts2Ud5R6ZoVOpEenH9VitbsR_rKuunRfnI4LpCzliv7WllPl-2PtxfdiuWnIZMvcnFKXCWCKVVog",
+			"type": "default"
+		},
+		{
+			"key": "uploadLink",
+			"value": "asdasdasd",
+			"type": "default"
+		},
+		{
+			"key": "downloadLink",
+			"value": "asdasdasd",
+			"type": "default"
+		},
+		{
+			"key": "auth2",
+			"value": "Bearer asdasdasd",
+			"type": "default"
+		},
+		{
+			"key": "refreshToken",
+			"value": "asdasdasdasdasdasd",
+			"type": "default"
+		},
+		{
+			"key": "session",
+			"value": "asdasdasd",
+			"type": "default"
+		},
+		{
+			"key": "sessionId",
+			"value": "asdasdasd",
+			"type": "default"
+		},
+		{
+			"key": "sessionAdminId",
+			"value": "asdasdasdasd",
+			"type": "default"
+		},
+		{
+			"key": "childSessionId",
+			"value": "asdasdasdasda",
+			"type": "default"
+		},
+		{
+			"key": "participant",
+			"value": "sadasdasd",
+			"type": "default"
+		},
+		{
+			"key": "adhocUserId",
+			"value": "asdasd",
+			"type": "default"
+		},
+		{
+			"key": "adhocUserAuth",
+			"value": "asdasdasd",
+			"type": "default"
+		},
+		{
+			"key": "user",
+			"value": "asdasdasdasda",
+			"type": "default"
+		}
+	]
+}

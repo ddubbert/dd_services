@@ -23,8 +23,7 @@ const getWhereInputFor = (currentUser: UserAuth): Maybe<Prisma.UserWhereInput> =
   }
   case AuthMethod.NONE: {
     return null
-  }
-  }
+  }}
 }
 
 const getCreateInputFor = (currentUser: Maybe<UserAuth>): Prisma.UserCreateInput => {

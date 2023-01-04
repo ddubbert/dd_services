@@ -4,7 +4,7 @@ import { getDelayIfAuthorized, TTL } from '../types/DeletionDelay'
 import moment from 'moment'
 import { DeletionStatus } from '../types/DeletionStatus'
 import { Prisma, Session } from '@prisma/client'
-import { verifyRawUpdatePayload, verifySession } from '../types/DBFunction'
+import { DBFunction, verifyRawUpdatePayload, verifySession } from '../types/DBFunction'
 import { depthLimitedFieldResolver, depthLimitedReferenceResolver } from '../utils/PathReader'
 import { FieldResolverFn } from '../types/ResolverFn'
 import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '../types/Errors'
@@ -34,7 +34,6 @@ export default {
   Mutation: {
     createSession: (async (parent, args, context) => {
       const ttl = args.input.ttl
-      console.log(ttl)
       const delay = getDelayIfAuthorized(context.currentUser, ttl)
 
       const update: Prisma.SessionCreateInput = {
@@ -60,14 +59,14 @@ export default {
          Demotions are handled in a separate mutation.`)
       }
 
-      const futureParticipants = args.userIds.reduce((acc, it) => session.participants.includes(it)
-        ? acc
-        : [ ...acc, it ], [] as string[])
+      const futureParticipants = args.userIds.reduce((acc, it) =>
+        session.participants.includes(it) || session.owners.includes(it)
+          ? acc
+          : [ ...acc, it ], [] as string[])
 
       if (futureParticipants.length > 0) {
         try {
           const payload = await context.db.addUsersAsParticipants(session, futureParticipants)
-          console.log(payload)
           if (payload.nModified === 0) { throw new Error('') }
         } catch (_e) {
           throw new InternalServerError('Could not add users as participants of this session.')
@@ -170,6 +169,7 @@ export default {
       }
     }) as FieldResolverFn,
     removeUserFromSession: (async (parent, args, context: Context) => {
+      // TODO: Remove from childs too
       const session = await getSessionIfAuthorized(args.sessionId, context)
       const participantIndex = session.participants.indexOf(args.userId)
       const ownerIndex = session.owners.indexOf(args.userId)
@@ -205,41 +205,49 @@ export default {
     addSessionAsChild: (async (parent, args, context: Context) => {
       const parentSession = await getSessionIfAuthorized(args.parentSession, context)
       const childSession = await getSessionIfAuthorized(args.childSession, context)
-      const user = context.currentUser.userId
+      const { userId } = context.currentUser
 
-      if (!parentSession.owners.includes(user) || !childSession.owners.includes(user)) {
+      if (!parentSession.owners.includes(userId) || !childSession.owners.includes(userId)) {
         throw new ForbiddenError('User is not allowed to update these session.')
       }
       if (parentSession.parentSession) {
         throw new BadRequestError('Provided parent session already is a child session.')
       }
 
-      const childUsers = [ ...childSession.owners, ...childSession.participants ]
-        .filter(it => parentSession.owners.includes(it))
+      const usersMissingInParent = [ ...childSession.owners, ...childSession.participants ]
+        .filter(it => !parentSession.owners.includes(it) && !parentSession.participants.includes(it))
 
       try{
         const updateChild = context.db.createUpdateTransaction(
           { id: childSession.id },
           { parentSession: parentSession.id },
         )
-        const updateParent = context.db.createAddUsersAsTransaction(parentSession, childUsers, 'participants')
+        const transactions: DBFunction<any>[] = [ updateChild ]
 
-        const payload = await context.db.runTransactions([ updateChild, updateParent ])
-
-        verifySession(payload[0])
-        verifyRawUpdatePayload(payload[1])
-        if (payload[1].nModified === 0) { await context.db.updateSession(
-          { id: childSession.id },
-          { parentSession: childSession.parentSession },
-        )
+        if (usersMissingInParent.length > 0) {
+          const updateParent = context.db.createAddUsersAsTransaction(
+            parentSession,
+            usersMissingInParent,
+            'participants',
+          )
+          transactions.push(updateParent)
         }
 
-        const missingInParent = childUsers.reduce(
-          (acc, it) => parentSession.owners.includes(it) || parentSession.participants.includes(it)
-            ? acc
-            : [ ...acc, it ], [] as string[]
-        )
-        parentSession.participants.push(...missingInParent)
+        const payload = await context.db.runTransactions(transactions)
+
+        verifySession(payload[0])
+        if (payload.length > 1) {
+          verifyRawUpdatePayload(payload[1])
+
+          if (payload[1].nModified === 0) {
+            await context.db.updateSession(
+              { id: childSession.id },
+              { parentSession: childSession.parentSession },
+            )
+          }
+        }
+
+        parentSession.participants.push(...usersMissingInParent)
         return parentSession
       } catch (e) {
         throw e
@@ -269,6 +277,9 @@ export default {
       async (parent, _args, context) =>
         parent.parentSession ? await context.db.getSessionBy(parent.parentSession) : null
     ),
+    adminId: (async (parent, args, context) =>
+      parent.owners.includes(context.currentUser.userId) ? parent.privateId : null
+    ) as FieldResolverFn,
   },
   User: {
     sessions: depthLimitedFieldResolver(async (user, _args, context) => {

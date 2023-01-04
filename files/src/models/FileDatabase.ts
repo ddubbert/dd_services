@@ -39,6 +39,7 @@ export const createFileDB = async (events: EventHandler, uploadHandler: UploadHa
     filesChangeStream.on('change', async next => {
       switch (next.operationType) {
       case 'insert': {
+        console.log('DB-Event: File created')
         const entity: Entity = { type: EntityType.FILE, id: next.documentKey._id.toString() }
         const doc = next.fullDocument
         doc.id = doc._id
@@ -53,6 +54,7 @@ export const createFileDB = async (events: EventHandler, uploadHandler: UploadHa
         break
       }
       case 'update': {
+        console.log('DB-Event: File updated')
         const id = next.documentKey._id.toString()
         const entity: Entity = { type: EntityType.FILE, id }
         const doc = next.fullDocument
@@ -74,6 +76,7 @@ export const createFileDB = async (events: EventHandler, uploadHandler: UploadHa
         break
       }
       case 'delete': {
+        console.log('DB-Event: File deleted')
         const entity: Entity = { type: EntityType.FILE, id: next.documentKey._id.toString() }
         const doc = next.fullDocumentBeforeChange
 
@@ -170,6 +173,8 @@ export const createFileDB = async (events: EventHandler, uploadHandler: UploadHa
         $currentDate: { updatedAt: true },
       },
     } ]
+
+    console.log(updates)
 
     const payload = await (createRawCommand({ update: 'files', updates }))()
     verifyRawUpdatePayload(payload)

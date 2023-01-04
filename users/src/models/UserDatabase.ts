@@ -30,6 +30,7 @@ export const createUserDB = async (events: EventHandler): Promise<UserDatabase> 
     usersChangeStream.on('change', async next => {
       switch (next.operationType) {
       case 'insert': {
+        console.log('DB-Event: user created')
         await events.send(KafkaTopic.USERS, [ {
           event: MessageEvent.CREATED,
           entity: {
@@ -40,6 +41,7 @@ export const createUserDB = async (events: EventHandler): Promise<UserDatabase> 
         break
       }
       case 'update': {
+        console.log('DB-Event: user updated')
         await events.send(KafkaTopic.USERS, [ {
           event: MessageEvent.UPDATED,
           entity: {
@@ -50,6 +52,7 @@ export const createUserDB = async (events: EventHandler): Promise<UserDatabase> 
         break
       }
       case 'delete': {
+        console.log('DB-Event: user deleted')
         await events.send(KafkaTopic.USERS, [ {
           event: MessageEvent.DELETED,
           entity: {
