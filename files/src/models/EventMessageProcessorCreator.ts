@@ -72,7 +72,7 @@ export const createProcessors = (eventHandler: EventHandler,
     if (message.event === MessageEvent.DELETED) {
       console.log('session deleted')
       const session = message.entity.id
-
+      console.log(session)
       try {
         const fileAnswer = await fileDB.removeSessionsFromAllFiles([ session ])
         console.log(fileAnswer)

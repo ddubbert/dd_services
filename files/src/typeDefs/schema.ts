@@ -3,7 +3,7 @@ import { gql } from 'apollo-server'
 export default gql`
   scalar DateTime
 
-  type Query @rateLimit(limit: 30, duration: 60){
+  type Query @rateLimit(limit: 60, duration: 60){
     "All files of a user"
     getAllFilesOfUser(filter: FileFilter): [File!]
     "All files of a session"
@@ -13,7 +13,7 @@ export default gql`
     getFileUploadLink(sessionId: String): FileUploadLinkDetails
   }
 
-  type Mutation @rateLimit(limit: 30, duration: 60){
+  type Mutation @rateLimit(limit: 60, duration: 60){
     addFileToSession(fileId: ID!, sessionId: ID!): File
     copyFile(fileId: ID!): File
     removeFileFromSession(fileId: ID!, sessionId: ID!): DeletionResponse!
