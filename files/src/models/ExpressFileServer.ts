@@ -9,8 +9,8 @@ import { FILE_TEMP_FOLDER } from '../types/FilePath'
 import { fileTypeIsValid } from '../types/FileType'
 import { createDownloadHandler } from './DownloadHandler'
 import cors from 'cors'
-import { getFileIfUserHasPermissions, userIsMemberInAllSessions } from '../utils/AuthorizationHelper'
-import { ForbiddenError, NotFoundError } from '../types/Errors'
+import { getFileIfUserHasPermissions } from '../utils/AuthorizationHelper'
+import { BadRequestError, NotFoundError } from '../types/Errors'
 import http from 'http'
 import { v4 } from 'uuid'
 
@@ -40,22 +40,51 @@ export const startExpressFileServer = async (
   const downloader = createDownloadHandler()
 
   app.get(
-    '/files/:fileId',
+    '/files',
     cors<cors.CorsRequest>(),
     auth.expressMiddleware,
     signer.verifyMiddleware,
     (async (req, res, next) => {
       try {
-        const user = req.currentUser
-        const fileId = req.params.fileId
+        const ids = req.query.fileId
+        if (!ids) {
+          next(new BadRequestError('No file ids provided.'))
+        }
 
-        const file = await getFileIfUserHasPermissions(fileId, user.userId, fileDB, userSessionDB)
-        await downloader.downloadFile(res, file)
+        const fileIds = Array.isArray(ids) ? ids : [ ids ]
+
+        const files = await fileDB.getFiles({ id: { in: fileIds as string[] } })
+
+        if (files.length === 0) {
+          next(new NotFoundError('No file found.'))
+        } else if (files.length === 1) {
+          await downloader.downloadFile(res, files[0])
+        } else {
+          await downloader.downloadFiles(res, files, 'files')
+        }
       } catch (e) {
         next(e)
       }
     }) as RequestHandler
   )
+
+  // app.get(
+  //   '/files/:fileId',
+  //   cors<cors.CorsRequest>(),
+  //   auth.expressMiddleware,
+  //   signer.verifyMiddleware,
+  //   (async (req, res, next) => {
+  //     try {
+  //       const user = req.currentUser
+  //       const fileId = req.params.fileId
+  //
+  //       const file = await getFileIfUserHasPermissions(fileId, user.userId, fileDB, userSessionDB)
+  //       await downloader.downloadFile(res, file)
+  //     } catch (e) {
+  //       next(e)
+  //     }
+  //   }) as RequestHandler
+  // )
 
   app.post(
     '/uploads/:sessionId?',
@@ -83,31 +112,31 @@ export const startExpressFileServer = async (
     }) as RequestHandler,
   )
 
-  app.get(
-    '/files/sessions/:sessionId',
-    cors<cors.CorsRequest>(),
-    auth.expressMiddleware,
-    signer.userRestrictedVerifyMiddleware,
-    (async (req, res, next) => {
-      try {
-        const user = req.currentUser
-        const { sessionId } = req.params
-
-        if (!await userIsMemberInAllSessions([ sessionId ], user.userId, userSessionDB)) {
-          throw new ForbiddenError('User is not authorized to access files of this session.')
-        }
-
-        const files = await fileDB.getFiles({ sessions: { has: sessionId } })
-        if (files.length <= 0) {
-          next(new NotFoundError('No files found for this session.'))
-        }
-
-        await downloader.downloadFiles(res, files, sessionId)
-      } catch (e) {
-        next(e)
-      }
-    }) as RequestHandler,
-  )
+  // app.get(
+  //   '/files/sessions/:sessionId',
+  //   cors<cors.CorsRequest>(),
+  //   auth.expressMiddleware,
+  //   signer.userRestrictedVerifyMiddleware,
+  //   (async (req, res, next) => {
+  //     try {
+  //       const user = req.currentUser
+  //       const { sessionId } = req.params
+  //
+  //       if (!await userIsMemberInAllSessions([ sessionId ], user.userId, userSessionDB)) {
+  //         throw new ForbiddenError('User is not authorized to access files of this session.')
+  //       }
+  //
+  //       const files = await fileDB.getFiles({ sessions: { has: sessionId } })
+  //       if (files.length <= 0) {
+  //         next(new NotFoundError('No files found for this session.'))
+  //       }
+  //
+  //       await downloader.downloadFiles(res, files, sessionId)
+  //     } catch (e) {
+  //       next(e)
+  //     }
+  //   }) as RequestHandler,
+  // )
 
   const uploadServer = http.createServer(app)
   await new Promise<void>((resolve) => uploadServer.listen({

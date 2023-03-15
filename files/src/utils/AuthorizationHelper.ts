@@ -8,9 +8,7 @@ export const userIsMemberInAllSessions = async (
   user: string,
   db: UserSessionDatabase): Promise<boolean> => {
   const userSessions = await db.getUserSessions({ session: { in: sessions } })
-  console.log(userSessions)
-  console.log(user)
-  console.log(sessions)
+
   return userSessions?.reduce((acc, it) => acc && it.users.includes(user), true) ?? false
 }
 

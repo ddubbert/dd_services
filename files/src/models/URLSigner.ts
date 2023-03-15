@@ -20,10 +20,22 @@ export const createSigner = (): URLSigner => {
     return { url: signature.sign(url, { addr: user.userId, ttl }), ttl }
   }
 
-  const createDownloadUrlForSingleFile = (file: File): string => signature.sign(`${BASE_FILE_URL}/files/${file.id}`)
+  const buildDownloadUrl = (files: File[]): string => `${BASE_FILE_URL}/files?${
+    files.reduce((acc, it, index) => `${acc}${(index === 0 ? '' : '&')}fileId=${it.id}`, '')
+  }`
 
-  const createDownloadUrlForFilesOfSession = (user: AccessTokenContent, sessionId: string): UploadLinkDetails =>
-    ({ url: signature.sign(`${BASE_FILE_URL}/files/sessions/${sessionId}`, { addr: user.userId, ttl }), ttl })
+  const createUserRestrictedDownloadUrlForFiles = (user: AccessTokenContent, files: File[]): UploadLinkDetails => ({
+    url: signature.sign(buildDownloadUrl(files), { addr: user.userId, ttl }),
+    ttl,
+  })
+
+  const createTimeRestrictedDownloadUrlForFiles = (files: File[]): UploadLinkDetails => ({
+    url: signature.sign(buildDownloadUrl(files), { ttl }),
+    ttl,
+  })
+
+  const createDownloadUrlForFiles = (files: File[]): string =>
+    signature.sign(buildDownloadUrl(files))
 
   const userRestrictedVerifyMiddleware: RequestHandler = (req, res, next) => {
     const user = req.currentUser
@@ -41,23 +53,26 @@ export const createSigner = (): URLSigner => {
       throw new AuthenticationError('Not authenticated.')
     }
     const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`
-    req.currentUrl = signature.verify(url)
+    // Todo: Test
+    req.currentUrl = signature.verify(url, { addr: user.userId })
     next()
   }
 
   return {
     signUploadUrl,
     userRestrictedVerifyMiddleware,
-    createDownloadUrlForSingleFile,
+    createDownloadUrlForFiles,
+    createTimeRestrictedDownloadUrlForFiles,
+    createUserRestrictedDownloadUrlForFiles,
     verifyMiddleware,
-    createDownloadUrlForFilesOfSession,
   } as URLSigner
 }
 
 export type URLSigner = {
   signUploadUrl: (user: AccessTokenContent, session?: string) => UploadLinkDetails
   userRestrictedVerifyMiddleware: RequestHandler
-  createDownloadUrlForSingleFile: (file: File) => string
+  createUserRestrictedDownloadUrlForFiles: (user: AccessTokenContent, files: File[]) => UploadLinkDetails
+  createTimeRestrictedDownloadUrlForFiles: (files: File[]) => UploadLinkDetails
+  createDownloadUrlForFiles: (files: File[]) => string
   verifyMiddleware: RequestHandler
-  createDownloadUrlForFilesOfSession: (user: AccessTokenContent, sessionId: string) => UploadLinkDetails
 }

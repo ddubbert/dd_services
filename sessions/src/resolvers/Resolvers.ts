@@ -30,6 +30,12 @@ export default {
   Query: {
     allSessions: (async (parent, args, context) => (await context.db.getSessions())) as FieldResolverFn,
     getSession: (async (parent, args, context) => (await getSessionIfAuthorized(args.sessionId, context))) as FieldResolverFn,
+    getSessions: (async (parent, args, context) => await context.db.getSessions({
+      OR: [
+        { owners: { has: context.currentUser.userId } },
+        { participants: { has: context.currentUser.userId } },
+      ],
+    }) || []) as FieldResolverFn,
   },
   Mutation: {
     createSession: (async (parent, args, context) => {
@@ -52,6 +58,21 @@ export default {
 
       return await context.db.createSession(update)
     }) as FieldResolverFn,
+    updateSessionTitle: (async (parent, args, context) => {
+      const session = await getSessionIfAuthorized(args.sessionId, context)
+      if (!session.owners.includes(context.currentUser.userId)) {
+        throw new ForbiddenError('User is not authorized to update this session.')
+      }
+
+      try {
+        return await context.db.updateSession(
+          { id: session.id },
+          { title: args.title },
+        )
+      } catch {
+        throw new InternalServerError('Could not update the session.')
+      }
+    }) as FieldResolverFn,
     addParticipantsToSession: (async (parent, args, context) => {
       const session = await getSessionIfAuthorized(args.sessionId, context)
       if (session.owners.some(owner => args.userIds.includes(owner))) {
@@ -68,7 +89,7 @@ export default {
         try {
           const payload = await context.db.addUsersAsParticipants(session, futureParticipants)
           if (payload.nModified === 0) { throw new Error('') }
-        } catch (_e) {
+        } catch {
           throw new InternalServerError('Could not add users as participants of this session.')
         }
 
@@ -90,7 +111,7 @@ export default {
         try {
           const payload = await context.db.addUsersAsOwners(session, futureOwners)
           if (payload.nModified === 0) { throw new Error('') }
-        } catch (e) {
+        } catch {
           throw new InternalServerError('Could not add users as owners of this session.')
         }
 
@@ -117,7 +138,7 @@ export default {
         try {
           const payload = await context.db.addUsersAsParticipants(session, [ context.currentUser.userId ])
           if (payload.nModified === 0) { throw new Error('') }
-        } catch (e) {
+        } catch {
           throw new InternalServerError('Could not add users as owners of this session.')
         }
 
@@ -127,14 +148,14 @@ export default {
       return session
     }) as FieldResolverFn,
     joinSessionAsOwner: (async (parent, args, context): Promise<Session> => {
-      const session = await context.db.getSession({ privateId: args.sessionId })
-      if (!session) {throw new NotFoundError() }
+      const session = await context.db.getSession({ privateId: args.privateSessionId })
+      if (!session) { throw new NotFoundError() }
 
       if (!session.owners.includes(context.currentUser.userId)) {
         try {
           const payload = await context.db.addUsersAsOwners(session, [ context.currentUser.userId ])
           if (payload.nModified === 0) { throw new Error('') }
-        } catch (e) {
+        } catch {
           throw new InternalServerError('Could not add users as owners of this session.')
         }
 
@@ -169,7 +190,6 @@ export default {
       }
     }) as FieldResolverFn,
     removeUserFromSession: (async (parent, args, context: Context) => {
-      // TODO: Remove from childs too
       const session = await getSessionIfAuthorized(args.sessionId, context)
       const participantIndex = session.participants.indexOf(args.userId)
       const ownerIndex = session.owners.indexOf(args.userId)
@@ -182,7 +202,7 @@ export default {
         if (ownerIndex < 0 && participantIndex < 0) { throw new Error('') }
         const payload = await context.db.removeUsersFromSession(session, [ args.userId ])
         if (payload.nModified === 0) { throw Error('') }
-      } catch (e) {
+      } catch {
         throw new InternalServerError('Could not remove user from this session.')
       }
 
@@ -198,7 +218,7 @@ export default {
         const payload = await context.db.removeUsersFromSession(session, [ context.currentUser.userId ])
         if (payload.nModified === 0) { throw Error('') }
         return { status: DeletionStatus.SUCCESSFUL }
-      } catch (e) {
+      } catch {
         return { status: DeletionStatus.UNSUCCESSFUL, message: 'Could not remove user from this session.' }
       }
     }) as FieldResolverFn,
@@ -208,7 +228,7 @@ export default {
       const { userId } = context.currentUser
 
       if (!parentSession.owners.includes(userId) || !childSession.owners.includes(userId)) {
-        throw new ForbiddenError('User is not allowed to update these session.')
+        throw new ForbiddenError('User is not allowed to update these sessions.')
       }
       if (parentSession.parentSession) {
         throw new BadRequestError('Provided parent session already is a child session.')
@@ -249,8 +269,34 @@ export default {
 
         parentSession.participants.push(...usersMissingInParent)
         return parentSession
-      } catch (e) {
-        throw e
+      } catch {
+        throw new InternalServerError('Could not update the sessions.')
+      }
+    }) as FieldResolverFn,
+    removeSessionAsChild: (async (parent, args, context: Context) => {
+      const parentSession = await getSessionIfAuthorized(args.parentSession, context)
+      const childSession = await context.db.getSessionBy(args.childSession)
+      const { userId } = context.currentUser
+
+      if (!childSession) {
+        throw new NotFoundError('Child session not found.')
+      }
+      if (!parentSession.owners.includes(userId) || !childSession.owners.includes(userId)) {
+        throw new ForbiddenError('User is not allowed to update these sessions.')
+      }
+      if (childSession.parentSession !== args.parentSession) {
+        throw new BadRequestError('Provided parent session is not a parent for the provided child session.')
+      }
+
+      try{
+        await context.db.updateSession(
+          { id: childSession.id },
+          { parentSession: { unset: true } },
+        )
+
+        return parentSession
+      } catch {
+        throw new InternalServerError('Could not update the sessions.')
       }
     }) as FieldResolverFn,
   },

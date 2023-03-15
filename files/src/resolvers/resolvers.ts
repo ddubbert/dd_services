@@ -4,7 +4,7 @@ import { FieldResolverFn } from '../types/ResolverFn'
 import { depthLimitedFieldResolver, depthLimitedReferenceResolver } from '../models/PathReader'
 import { DeletionStatus } from '../types/DeletionStatus'
 import { FileFilter } from '../types/FileFilter'
-import {ForbiddenError, InternalServerError} from '../types/Errors'
+import { ForbiddenError, InternalServerError, NotFoundError } from '../types/Errors'
 import { FileType, getFileTypeFrom } from '../types/FileType'
 import { getFileIfUserHasPermissions, userIsMemberInAllSessions } from '../utils/AuthorizationHelper'
 
@@ -35,9 +35,26 @@ export default {
       const { fileId } = args
       return await getFileIfUserHasPermissions(fileId, userId, context.fileDB, context.userSessionDB)
     }) as FieldResolverFn,
-    getDownloadLinkForFilesOfSession: (async (parent, args, context) =>
-      context.signer.createDownloadUrlForFilesOfSession(context.currentUser, args.sessionId)
-    ) as FieldResolverFn,
+    getDownloadLinkForFilesOfSession: (async (parent, args, context) => {
+      if (!await userIsMemberInAllSessions([ args.sessionId ], context.currentUser.userId, context.userSessionDB)) {
+        throw new ForbiddenError('User is not authorized to access files of this session.')
+      }
+
+      const files = await context.fileDB.getFiles({ sessions: { has: args.sessionId } })
+      if (files.length === 0) {
+        throw new NotFoundError('No files found for this session.')
+      }
+
+      return context.signer.createUserRestrictedDownloadUrlForFiles(context.currentUser, files)
+    }) as FieldResolverFn,
+    getDownloadLinkForFilesOfUser: (async (parent, args, context) => {
+      const files = await context.fileDB.getFiles({ owner: context.currentUser.userId })
+      if (files.length === 0) {
+        throw new NotFoundError('No files found for this user.')
+      }
+
+      return context.signer.createUserRestrictedDownloadUrlForFiles(context.currentUser, files)
+    }) as FieldResolverFn,
     getFileUploadLink: (async (parent, args, context) =>
       context.signer.signUploadUrl(context.currentUser, args.sessionId)
     ) as FieldResolverFn,
@@ -127,7 +144,7 @@ export default {
     type: (async (parent) => (getFileTypeFrom(parent.type))) as FieldResolverFn,
     mimetype: (async (parent) => parent.type) as FieldResolverFn,
     downloadLink: (async (parent, args, context) =>
-      context.signer.createDownloadUrlForSingleFile(parent as File)
+      context.signer.createDownloadUrlForFiles([ parent as File ])
     ) as FieldResolverFn,
     sessions: (async (parent) => (
       parent.sessions.length ? parent.sessions.map(it => ({ id: it })) : null)

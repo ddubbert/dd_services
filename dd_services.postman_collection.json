@@ -227,6 +227,138 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "get tokens",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.have.status(200);",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"auth\", \"Bearer \" + jsonData.access_token);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "grant_type",
+									"value": "password",
+									"type": "default"
+								},
+								{
+									"key": "client_id",
+									"value": "{{client}}",
+									"type": "default"
+								},
+								{
+									"key": "client_secret",
+									"value": "{{secret}}",
+									"type": "default"
+								},
+								{
+									"key": "username",
+									"value": "doener",
+									"type": "default"
+								},
+								{
+									"key": "password",
+									"value": "doener",
+									"type": "default"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{server}}/auth/realms/{{realm}}/protocol/openid-connect/token",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"auth",
+								"realms",
+								"{{realm}}",
+								"protocol",
+								"openid-connect",
+								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Perm User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.user).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.authenticationDetails).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Permanent user should be created', function() {",
+									"    pm.expect(jsonData.data.createOrLoginUser.user.isPermanent).to.be.true;",
+									"    pm.expect(jsonData.data.createOrLoginUser.user.email).to.not.be.null;",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"user\", jsonData.data.createOrLoginUser.user);",
+									"pm.collectionVariables.set(\"auth\", \"Bearer \" + jsonData.data.createOrLoginUser.authenticationDetails.accessToken);",
+									"pm.collectionVariables.set(\"refreshToken\", jsonData.data.createOrLoginUser.authenticationDetails.refreshToken);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation {\n  createOrLoginUser {\n    user {\n      ...UserFrag\n    }\n    authenticationDetails {\n      ...AuthFrag\n    }\n  }\n}\n\n\nfragment AuthFrag on AuthenticationDetails {\n  accessToken\n  tokenType\n  expiresIn\n  refreshExpiresIn\n  refreshToken\n  refreshUri\n}\n\n\nfragment UserFrag on User {\n  id\n  email\n  isPermanent\n  nickname\n  createdAt\n  updatedAt\n  sessions {\n    ...SessionFrag\n  }\n  files {\n    ...FileFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -1048,8 +1180,8 @@
 						"body": {
 							"mode": "graphql",
 							"graphql": {
-								"query": "mutation JoinSessionAsOwner($sessionId: ID!) {\n  joinSessionAsOwner(sessionId: $sessionId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
-								"variables": "{\n    \"sessionId\": \"{{sessionAdminId}}\"\n}"
+								"query": "mutation JoinSessionAsOwner($privateSessionId: ID!) {\n  joinSessionAsOwner(privateSessionId: $privateSessionId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"privateSessionId\": \"{{sessionAdminId}}\"\n}"
 							}
 						},
 						"url": {
@@ -1473,6 +1605,21 @@
 							"script": {
 								"exec": [
 									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.user).to.not.be.null;",
+									"    pm.expect(jsonData.data.createOrLoginUser.authenticationDetails).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Ad hoc user should be created', function() {",
+									"    pm.expect(jsonData.data.createOrLoginUser.user.isPermanent).to.be.false;",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"user\", jsonData.data.createOrLoginUser.user);",
 									"pm.collectionVariables.set(\"auth\", \"Bearer \" + jsonData.data.createOrLoginUser.authenticationDetails.accessToken);",
 									"pm.collectionVariables.set(\"refreshToken\", jsonData.data.createOrLoginUser.authenticationDetails.refreshToken);"
 								],
@@ -1512,7 +1659,79 @@
 							"script": {
 								"exec": [
 									"var jsonData = JSON.parse(responseBody);",
-									"pm.collectionVariables.set(\"sessionId\", jsonData.data.createSession.id);"
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.createSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('User should be owner', function() {",
+									"    pm.expect(jsonData.data.createSession.owners.map(it => it.id)).to.contain(pm.collectionVariables.get(\"user\").id);",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"sessionId\", jsonData.data.createSession.id);",
+									"pm.collectionVariables.set(\"sessionAdminId\", jsonData.data.createSession.adminId);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "mutation {\n  createSession(input: { title: \"Penis Party File\", ttl: SHORT }) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": ""
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Session Copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.createSession).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('User should be owner', function() {",
+									"    pm.expect(jsonData.data.createSession.owners.map(it => it.id)).to.contain(pm.collectionVariables.get(\"user\").id);",
+									"})",
+									"",
+									"pm.collectionVariables.set(\"sessionId\", jsonData.data.createSession.id);",
+									"pm.collectionVariables.set(\"sessionAdminId\", jsonData.data.createSession.adminId);",
+									""
 								],
 								"type": "text/javascript"
 							}
@@ -1556,6 +1775,22 @@
 							"script": {
 								"exec": [
 									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.not.be.null;",
+									"    pm.expect(jsonData.data.getFileUploadLink).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Response should contain url', function() {",
+									"    pm.expect(jsonData.data.getFileUploadLink.url).to.not.be.null;",
+									"})",
+									"",
+									"pm.test('Response should contain ttl', function() {",
+									"    pm.expect(jsonData.data.getFileUploadLink.ttl).to.not.be.null;",
+									"})",
+									"",
 									"pm.collectionVariables.set(\"uploadLink\", jsonData.data.getFileUploadLink.url);"
 								],
 								"type": "text/javascript"
@@ -1599,7 +1834,9 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									""
+									"pm.test('Request should resolve successfully', function() {",
+									"    pm.expect(responseBody).to.equal(\"success\");",
+									"})"
 								],
 								"type": "text/javascript"
 							}
@@ -1620,17 +1857,17 @@
 								{
 									"key": "file_uploads",
 									"type": "file",
-									"src": "/Users/doener/Desktop/Screenshot 2022-11-21 at 17.32.57.png"
+									"src": "Screenshot 2022-11-21 at 17.32.57.png"
 								},
 								{
 									"key": "file_uploads",
 									"type": "file",
-									"src": "/Users/doener/Desktop/Screenshot 2022-11-27 at 17.17.36.png"
+									"src": "Screenshot 2022-11-27 at 17.17.36.png"
 								},
 								{
 									"key": "file_uploads",
 									"type": "file",
-									"src": "/Users/doener/Desktop/Screenshot 2022-11-27 at 17.33.41.png"
+									"src": "Screenshot 2022-11-27 at 17.33.41.png"
 								}
 							]
 						},
@@ -1648,60 +1885,6 @@
 		{
 			"name": "manual",
 			"item": [
-				{
-					"name": "download files",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "{{auth}}",
-								"type": "default"
-							}
-						],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "file_uploads",
-									"type": "file",
-									"src": "/Users/doener/Desktop/Screenshot 2022-11-21 at 17.32.57.png"
-								},
-								{
-									"key": "file_uploads",
-									"type": "file",
-									"src": "/Users/doener/Desktop/Screenshot 2022-11-27 at 17.17.36.png"
-								},
-								{
-									"key": "file_uploads",
-									"type": "file",
-									"src": "/Users/doener/Desktop/Screenshot 2022-11-27 at 17.33.41.png"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{downloadLink}}",
-							"host": [
-								"{{downloadLink}}"
-							]
-						}
-					},
-					"response": []
-				},
 				{
 					"name": "Get Download link for session files",
 					"event": [
@@ -1741,6 +1924,44 @@
 							"port": "80",
 							"path": [
 								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "download files",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
+						"url": {
+							"raw": "{{downloadLink}}",
+							"host": [
+								"{{downloadLink}}"
 							]
 						}
 					},
@@ -1853,6 +2074,26 @@
 		{
 			"key": "user",
 			"value": "asdasdasdasda",
+			"type": "default"
+		},
+		{
+			"key": "server",
+			"value": "https://auth.gm.fh-koeln.de:8444",
+			"type": "default"
+		},
+		{
+			"key": "realm",
+			"value": "DD_SERVICES",
+			"type": "default"
+		},
+		{
+			"key": "client",
+			"value": "dd_services_backend",
+			"type": "default"
+		},
+		{
+			"key": "secret",
+			"value": "a4740b91-6aef-4801-8b94-17958e4aef0b",
 			"type": "default"
 		}
 	]

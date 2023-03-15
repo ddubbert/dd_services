@@ -1,4 +1,3 @@
-import moment from 'moment'
 import { Prisma, PrismaClient, Session } from '@prisma/client'
 import EventHandler from './EventHandler'
 import { ChangeStream, MongoClient } from 'mongodb'
@@ -17,6 +16,17 @@ const getAffectedEntities = (session: Session): Entity[] => {
   const affectedParticipants: Entity[] = session.participants.map((id): Entity => ({ type: EntityType.USER, id }))
   return [ ...parentSession, ...affectedOwners, ...affectedParticipants ]
 }
+
+const getSessionRepresentationFrom = (dbSession: any): Partial<Session> => ({
+  id: dbSession._id,
+  title: dbSession.title,
+  owners: dbSession.owners,
+  participants: dbSession.participants,
+  parentSession: dbSession.parentSession,
+  createdAt: dbSession.createdAt,
+  updatedAt: dbSession.updatedAt,
+  deletedAt: dbSession.deletedAt,
+})
 
 export const createSessionDB = async (events: EventHandler): Promise<SessionDatabase> => {
   const prisma = new PrismaClient()
@@ -53,6 +63,7 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
         await events.send(KafkaTopic.SESSIONS, [ {
           event: MessageEvent.CREATED,
           entity,
+          message: JSON.stringify(getSessionRepresentationFrom(doc)),
         } ])
         break
       }
@@ -62,37 +73,45 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
         const entity: Entity = { type: EntityType.SESSION, id }
         const doc = next.fullDocument
         let sessionHasUser = true
+        let message: string | undefined
 
         if (doc) {
           doc.id = doc._id
           const affectedEntities = getAffectedEntities(doc as Session)
           if (affectedEntities.length > 0) { entity.connectedTo = affectedEntities }
           sessionHasUser = (doc.owners.length + doc.participants.length) > 0
+          message = JSON.stringify(getSessionRepresentationFrom(doc))
         }
 
-        await events.send(KafkaTopic.SESSIONS, [ {
-          event: MessageEvent.UPDATED,
-          entity,
-        } ])
-
         if (!sessionHasUser) { await deleteSession({ id }) }
+        else {
+          await events.send(KafkaTopic.SESSIONS, [ {
+            event: MessageEvent.UPDATED,
+            entity,
+            message,
+          } ])
+        }
+
         break
       }
       case 'delete': {
         console.log('DB-Event: session deleted')
         const entity: Entity = { type: EntityType.SESSION, id: next.documentKey._id.toString() }
         const doc = next.fullDocumentBeforeChange
+        let message: string | undefined
 
         if (doc) {
           doc.id = doc._id
           await deleteChildSessionsFor(doc as Session)
           const affectedEntities = getAffectedEntities(doc as Session)
           if (affectedEntities.length > 0) { entity.connectedTo = affectedEntities }
+          message = JSON.stringify(getSessionRepresentationFrom(doc))
         }
 
         await events.send(KafkaTopic.SESSIONS, [ {
           event: MessageEvent.DELETED,
           entity,
+          message,
         } ])
         break
       }
@@ -164,24 +183,12 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
       () => prisma.session.findMany({ where })
 
   const createUpdateTransaction =
-    (where: Prisma.SessionWhereUniqueInput, input: Prisma.SessionUpdateInput): DBFunction<Session|never> => () => {
-      const data = { ...input, updatedAt: moment().toISOString() }
-
-      return prisma.session.update({
-        where,
-        data,
-      })
-    }
+    (where: Prisma.SessionWhereUniqueInput, input: Prisma.SessionUpdateInput): DBFunction<Session|never> => () =>
+      (prisma.session.update({ where, data: input }))
 
   const createUpdateManyTransaction =
-    (where: Prisma.SessionWhereInput, input: Prisma.SessionUpdateInput): DBFunction<Prisma.BatchPayload|never> => () => {
-      const data = { ...input, updatedAt: moment().toISOString() }
-
-      return prisma.session.updateMany({
-        where,
-        data,
-      })
-    }
+    (where: Prisma.SessionWhereInput, input: Prisma.SessionUpdateInput): DBFunction<Prisma.BatchPayload|never> => () =>
+      (prisma.session.updateMany({ where, data: input }))
 
   const addUsersAsParticipants = async (session: Session, newUsers: string[]): Promise<RawUpdatePayload|never> => {
     const payload = await (createAddUsersAsTransaction(session, newUsers, 'participants'))()
@@ -223,6 +230,7 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
         $pullAll: { participants: users , owners: users },
         $currentDate: { updatedAt: true },
       },
+      multi: true,
     } ]
 
     const payload = await (createRawCommand({ update: 'sessions', updates }))()
