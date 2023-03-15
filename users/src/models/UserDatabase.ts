@@ -1,10 +1,17 @@
-import moment from 'moment'
 import { Prisma, PrismaClient, User } from '@prisma/client'
 import { ChangeStream, MongoClient } from 'mongodb'
 import EventHandler from './EventHandler'
 import { MessageEvent } from '../types/kafka/EventMessage'
 import { EntityType } from '../types/kafka/Entity'
 import { KafkaTopic } from '../types/kafka/KafkaTopic'
+
+const getUserRepresentationFrom = (dbUser: any): Partial<User> => ({
+  id: dbUser._id,
+  nickname: dbUser.nickname,
+  isPermanent: dbUser.isPermanent,
+  createdAt: dbUser.createdAt,
+  updatedAt: dbUser.updatedAt,
+})
 
 export const createUserDB = async (events: EventHandler): Promise<UserDatabase> => {
   const prisma = new PrismaClient()
@@ -36,29 +43,41 @@ export const createUserDB = async (events: EventHandler): Promise<UserDatabase> 
           entity: {
             type: EntityType.USER,
             id: next.documentKey._id.toString(),
-          }
+          },
+          message: JSON.stringify(getUserRepresentationFrom(next.fullDocument)),
         } ])
         break
       }
       case 'update': {
         console.log('DB-Event: user updated')
+        const doc = next.fullDocument
+        let message: string | undefined
+
+        if (doc) { message = JSON.stringify(getUserRepresentationFrom(doc)) }
+
         await events.send(KafkaTopic.USERS, [ {
           event: MessageEvent.UPDATED,
           entity: {
             type: EntityType.USER,
             id: next.documentKey._id.toString(),
-          }
+          },
+          message,
         } ])
         break
       }
       case 'delete': {
         console.log('DB-Event: user deleted')
+        const doc = next.fullDocumentBeforeChange
+        let message: string | undefined
+
+        if (doc) { message = JSON.stringify(getUserRepresentationFrom(doc)) }
         await events.send(KafkaTopic.USERS, [ {
           event: MessageEvent.DELETED,
           entity: {
             type: EntityType.USER,
             id: next.documentKey._id.toString(),
-          }
+          },
+          message,
         } ])
         break
       }
@@ -99,24 +118,12 @@ export const createUserDB = async (events: EventHandler): Promise<UserDatabase> 
   const deleteUsers = async (where: Prisma.UserWhereInput): Promise<Prisma.BatchPayload|never> =>
     (await prisma.user.deleteMany({ where }))
 
-  const updateUser = async (where: Prisma.UserWhereUniqueInput, input: Prisma.UserUpdateInput): Promise<User|never> => {
-    const data = { ...input, updatedAt: moment().toISOString() }
-
-    return await prisma.user.update({
-      where,
-      data,
-    })
-  }
+  const updateUser = async (where: Prisma.UserWhereUniqueInput, input: Prisma.UserUpdateInput): Promise<User|never> =>
+    (await prisma.user.update({ where, data: input }))
 
   const updateUsers =
-    async (where: Prisma.UserWhereInput, input: Prisma.UserUpdateInput): Promise<Prisma.BatchPayload|never> => {
-      const data = { ...input, updatedAt: moment().toISOString() }
-
-      return await prisma.user.updateMany({
-        where,
-        data,
-      })
-    }
+    async (where: Prisma.UserWhereInput, input: Prisma.UserUpdateInput): Promise<Prisma.BatchPayload|never> =>
+      (await prisma.user.updateMany({ where, data: input }))
 
   console.log(await createDeletionIndex())
   await setupDatabaseEvents()

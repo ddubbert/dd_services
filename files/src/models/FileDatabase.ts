@@ -1,4 +1,3 @@
-import moment from 'moment'
 import { Prisma, PrismaClient, File } from '@prisma/client'
 import EventHandler from './EventHandler'
 import { ChangeStream, MongoClient } from 'mongodb'
@@ -8,12 +7,27 @@ import { Entity, EntityType } from '../types/kafka/Entity'
 import { DBFunction, DBFunctionPayload, RawUpdatePayload, verifyRawUpdatePayload } from '../types/DBFunction'
 import { InternalServerError } from '../types/Errors'
 import { UploadHandler } from './UploadHandler'
+import { getFileTypeFrom } from '../types/FileType'
 
 const getAffectedEntities = (file: File): Entity[] => {
   const affectedOwner: Entity[] = file.owner ? [ { type: EntityType.USER, id: file.owner } ] : []
   const affectedSessions: Entity[] = file.sessions.map((id): Entity => ({ type: EntityType.SESSION, id }))
   return [ ...affectedOwner, ...affectedSessions ]
 }
+
+const getFileRepresentationFrom = (dbFile: any): Partial<File & { mimetype: string }> => ({
+  id: dbFile._id,
+  name: dbFile.name,
+  description: dbFile.description,
+  type: getFileTypeFrom(dbFile.type),
+  mimetype: dbFile.type,
+  size: dbFile.size,
+  creator: dbFile.creator,
+  owner: dbFile.owner,
+  sessions: dbFile.sessions,
+  createdAt: dbFile.createdAt,
+  updatedAt: dbFile.updatedAt,
+})
 
 export const createFileDB = async (events: EventHandler, uploadHandler: UploadHandler): Promise<FileDatabase> => {
   const prisma = new PrismaClient()
@@ -50,6 +64,7 @@ export const createFileDB = async (events: EventHandler, uploadHandler: UploadHa
         await events.send(KafkaTopic.FILES, [ {
           event: MessageEvent.CREATED,
           entity,
+          message: JSON.stringify(getFileRepresentationFrom(doc)),
         } ])
         break
       }
@@ -59,43 +74,55 @@ export const createFileDB = async (events: EventHandler, uploadHandler: UploadHa
         const entity: Entity = { type: EntityType.FILE, id }
         const doc = next.fullDocument
         let fileHasOwnerOrSessions = true
+        let message: string | undefined
 
         if (doc) {
           doc.id = doc._id
           const affectedEntities = getAffectedEntities(doc as File)
           if (affectedEntities.length > 0) { entity.connectedTo = affectedEntities }
           fileHasOwnerOrSessions = !!doc.owner || doc.sessions.length > 0
+          message = JSON.stringify(getFileRepresentationFrom(doc))
         }
 
-        await events.send(KafkaTopic.FILES, [ {
-          event: MessageEvent.UPDATED,
-          entity,
-        } ])
-
-        if (!fileHasOwnerOrSessions) { await deleteFile({ id }) }
+        if (!fileHasOwnerOrSessions) {
+          try {
+            await deleteFile({ id })
+          } catch {
+            // TODO
+            console.log(`File ${id} could not be deleted.`)
+          }
+        } else {
+          await events.send(KafkaTopic.FILES, [ {
+            event: MessageEvent.UPDATED,
+            entity,
+            message,
+          } ])
+        }
         break
       }
       case 'delete': {
         console.log('DB-Event: File deleted')
         const entity: Entity = { type: EntityType.FILE, id: next.documentKey._id.toString() }
         const doc = next.fullDocumentBeforeChange
+        let message: string | undefined
 
-        console.log(doc)
         if (doc) {
           doc.id = doc._id
           const affectedEntities = getAffectedEntities(doc as File)
           if (affectedEntities.length > 0) { entity.connectedTo = affectedEntities }
+          message = JSON.stringify(getFileRepresentationFrom(doc))
 
           try {
             await uploadHandler.deleteFiles([ doc.localId ])
           } catch (e) {
-            console.log('Could not delete file') // TODO: Backup plan
+            console.log('Could not delete files') // TODO: Backup plan
           }
         }
 
         await events.send(KafkaTopic.FILES, [ {
           event: MessageEvent.DELETED,
           entity,
+          message,
         } ])
         break
       }
@@ -143,24 +170,12 @@ export const createFileDB = async (events: EventHandler, uploadHandler: UploadHa
       () => prisma.file.findMany({ where })
 
   const createUpdateTransaction =
-    (where: Prisma.FileWhereUniqueInput, input: Prisma.FileUpdateInput): DBFunction<File|never> => () => {
-      const data = { ...input, updatedAt: moment().toISOString() }
-
-      return prisma.file.update({
-        where,
-        data,
-      })
-    }
+    (where: Prisma.FileWhereUniqueInput, input: Prisma.FileUpdateInput): DBFunction<File|never> => () =>
+      (prisma.file.update({ where, data: input }))
 
   const createUpdateManyTransaction =
-    (where: Prisma.FileWhereInput, input: Prisma.FileUpdateInput): DBFunction<Prisma.BatchPayload|never> => () => {
-      const data = { ...input, updatedAt: moment().toISOString() }
-
-      return prisma.file.updateMany({
-        where,
-        data,
-      })
-    }
+    (where: Prisma.FileWhereInput, input: Prisma.FileUpdateInput): DBFunction<Prisma.BatchPayload|never> => () =>
+      (prisma.file.updateMany({ where, data: input }))
 
   const removeOwnersFromAllFiles = async (owners: string[]): Promise<Prisma.BatchPayload|never> =>
     updateFiles({ owner: { in: owners } }, { owner: null })
@@ -172,9 +187,8 @@ export const createFileDB = async (events: EventHandler, uploadHandler: UploadHa
         $pullAll: { sessions },
         $currentDate: { updatedAt: true },
       },
+      multi: true,
     } ]
-
-    console.log(updates)
 
     const payload = await (createRawCommand({ update: 'files', updates }))()
     verifyRawUpdatePayload(payload)

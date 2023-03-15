@@ -7,7 +7,7 @@ import JSZip from 'jszip'
 
 export interface DownloadHandler {
   downloadFile: (res: Response, file: File) => Promise<void>
-  downloadFiles: (res: Response, files: File[], folderName: string) => Promise<void>
+  downloadFiles: (res: Response, files: File[], zipName: string) => Promise<void>
 }
 
 export const createDownloadHandler = (): DownloadHandler => {
@@ -20,16 +20,16 @@ export const createDownloadHandler = (): DownloadHandler => {
     res.sendFile(path)
   }
 
-  const downloadFiles = async (res: Response, files: File[], folderName: string): Promise<void> => {
+  const downloadFiles = async (res: Response, files: File[], zipName: string): Promise<void> => {
     const zip = new JSZip()
-    const folder = zip.folder(folderName)
+    const folder = zip.folder(zipName)
     if (!folder) { throw new InternalServerError('Something went wrong creating the zip file.') }
     for (const file of files) {
       const data = fs.readFileSync(`${FILE_FOLDER}/${file.localId}`)
       folder.file(file.name, data)
     }
     res.setHeader('Content-Type', 'application/zip')
-    res.setHeader('Content-Disposition', 'attachment; filename=' + folderName + '.zip')
+    res.setHeader('Content-Disposition', 'attachment; filename=' + zipName + '.zip')
     res.setHeader('Content-Transfer-Encoding', 'binary')
     zip.generateNodeStream({ type: 'nodebuffer', streamFiles: true })
       .pipe(res)
