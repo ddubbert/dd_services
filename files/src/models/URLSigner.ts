@@ -37,30 +37,18 @@ export const createSigner = (): URLSigner => {
   const createDownloadUrlForFiles = (files: File[]): string =>
     signature.sign(buildDownloadUrl(files))
 
-  const userRestrictedVerifyMiddleware: RequestHandler = (req, res, next) => {
-    const user = req.currentUser
-    if (!user) {
-      throw new AuthenticationError('Not authenticated.')
-    }
-    const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`
-    req.currentUrl = signature.verify(url, { addr: user.userId })
-    next()
-  }
-
   const verifyMiddleware: RequestHandler = (req, res, next) => {
     const user = req.currentUser
     if (!user) {
       throw new AuthenticationError('Not authenticated.')
     }
     const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`
-    // Todo: Test
     req.currentUrl = signature.verify(url, { addr: user.userId })
     next()
   }
 
   return {
     signUploadUrl,
-    userRestrictedVerifyMiddleware,
     createDownloadUrlForFiles,
     createTimeRestrictedDownloadUrlForFiles,
     createUserRestrictedDownloadUrlForFiles,
@@ -70,7 +58,6 @@ export const createSigner = (): URLSigner => {
 
 export type URLSigner = {
   signUploadUrl: (user: AccessTokenContent, session?: string) => UploadLinkDetails
-  userRestrictedVerifyMiddleware: RequestHandler
   createUserRestrictedDownloadUrlForFiles: (user: AccessTokenContent, files: File[]) => UploadLinkDetails
   createTimeRestrictedDownloadUrlForFiles: (files: File[]) => UploadLinkDetails
   createDownloadUrlForFiles: (files: File[]) => string

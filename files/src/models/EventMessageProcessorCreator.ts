@@ -20,7 +20,7 @@ export const createProcessors = (eventHandler: EventHandler,
         { sessions: { isEmpty: true } },
       ]
     })
-    console.log('Answer for test:')
+    console.log('Answer for deletable file test:')
     console.log(answer)
   }
 
