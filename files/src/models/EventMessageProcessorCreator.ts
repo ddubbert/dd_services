@@ -20,6 +20,7 @@ export const createProcessors = (eventHandler: EventHandler,
         { sessions: { isEmpty: true } },
       ]
     })
+    console.log('Answer for test:')
     console.log(answer)
   }
 
@@ -30,6 +31,7 @@ export const createProcessors = (eventHandler: EventHandler,
 
       try {
         const answer = await fileDB.removeOwnersFromAllFiles([ userId ])
+        console.log('Answer for remove Owners:')
         console.log(answer)
         await deleteFilesWithoutReferences()
       } catch (e) {
@@ -46,6 +48,7 @@ export const createProcessors = (eventHandler: EventHandler,
 
       try {
         const userSessionAnswer = await userSessionDB.createUserSession({ session, users })
+        console.log('Answer for createUserSession:')
         console.log(userSessionAnswer)
       } catch (e) {
         console.log('Nothing deleted.')
@@ -61,6 +64,7 @@ export const createProcessors = (eventHandler: EventHandler,
 
       try {
         const userSessionAnswer = await userSessionDB.updateUserSession({ session }, { users })
+        console.log('Answer for updateUserSession:')
         console.log(userSessionAnswer)
       } catch (e) {
         console.log('Nothing deleted.')
@@ -74,10 +78,14 @@ export const createProcessors = (eventHandler: EventHandler,
       const session = message.entity.id
       console.log(session)
       try {
+        console.log(await fileDB.getFiles({ sessions: { hasSome: [ session ] } }))
         const fileAnswer = await fileDB.removeSessionsFromAllFiles([ session ])
+        console.log('Answer for remove Sessions:')
         console.log(fileAnswer)
+        console.log(await fileDB.getFiles())
         await deleteFilesWithoutReferences()
         const userSessionAnswer = await userSessionDB.deleteUserSession({ session })
+        console.log('Answer for deleteUserSession:')
         console.log(userSessionAnswer)
       } catch (e) {
         console.log('Nothing deleted.')
