@@ -41,39 +41,36 @@ db.auth("$MONGO_INITDB_ROOT_USERNAME", "$MONGO_INITDB_ROOT_PASSWORD")
 
 rs.status()
 
-use $USERS_DATABASE_NAME
-db.createCollection("$USERS_DATABASE_NAME", { changeStreamPreAndPostImages: { enabled: true } })
-
+use dd_services_users
+db.createCollection("users", { changeStreamPreAndPostImages: { enabled: true } })
 db.createUser({
   user: "$USERS_DATABASE_USER",
   pwd: "$USERS_DATABASE_PASSWORD",
-  roles: [{ role: "readWrite", db: "$USERS_DATABASE_NAME" }]
+  roles: [{ role: "readWrite", db: "dd_services_users" }]
 })
 
-use $FILES_DATABASE_NAME
-db.createCollection("$FILES_DATABASE_NAME", { changeStreamPreAndPostImages: { enabled: true } })
-
+use dd_services_files
+db.createCollection("files", { changeStreamPreAndPostImages: { enabled: true } })
+db.createCollection("userSessions", { changeStreamPreAndPostImages: { enabled: true } })
 db.createUser({
   user: "$FILES_DATABASE_USER",
   pwd: "$FILES_DATABASE_PASSWORD",
-  roles: [{ role: "readWrite", db: "$FILES_DATABASE_NAME" }]
+  roles: [{ role: "readWrite", db: "dd_services_files" }]
 })
 
-use $FILES_USER_SESSION_DATABASE_NAME
-db.createCollection("$FILES_USER_SESSION_DATABASE_NAME", { changeStreamPreAndPostImages: { enabled: true } })
-
-db.createUser({
-  user: "$FILES_DATABASE_USER",
-  pwd: "$FILES_DATABASE_PASSWORD",
-  roles: [{ role: "readWrite", db: "$FILES_USER_SESSION_DATABASE_NAME" }]
-})
-
-use $SESSIONS_DATABASE_NAME
-db.createCollection("$SESSIONS_DATABASE_NAME", { changeStreamPreAndPostImages: { enabled: true } })
-
+use dd_services_sessions
+db.createCollection("sessions", { changeStreamPreAndPostImages: { enabled: true } })
 db.createUser({
   user: "$SESSIONS_DATABASE_USER",
   pwd: "$SESSIONS_DATABASE_PASSWORD",
-  roles: [{ role: "readWrite", db: "$SESSIONS_DATABASE_NAME" }]
+  roles: [{ role: "readWrite", db: "dd_services_sessions" }]
+})
+
+use dd_services_subscriptions
+db.createCollection("subscriptions", { changeStreamPreAndPostImages: { enabled: true } })
+db.createUser({
+  user: "$SUBSCRIPTIONS_DATABASE_USER",
+  pwd: "$SUBSCRIPTIONS_DATABASE_PASSWORD",
+  roles: [{ role: "readWrite", db: "dd_services_subscriptions" }]
 })
 EOF
