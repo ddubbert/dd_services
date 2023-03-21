@@ -3,6 +3,7 @@ services:
   zookeeper_1:
     container_name: zookeeper_1
     image: dd_services/zookeeper:3.2.3
+    restart: unless-stopped
     build:
       context: ./kafka/zookeeper
     volumes:
@@ -14,6 +15,7 @@ services:
   kafka_1:
     container_name: kafka_1
     image: dd_services/kafka:3.2.3
+    restart: unless-stopped
     build: 
       context: ./kafka
     volumes:
@@ -27,7 +29,7 @@ services:
   redisCache:
     container_name: redisCache
     image: redis:6.2-alpine
-    restart: always
+    restart: unless-stopped
     command: "redis-server --save 20 1 --loglevel warning --requirepass ${CACHE_PASSWORD}"
     volumes: 
       - redisCache:/data
@@ -36,7 +38,7 @@ services:
 
   users:
     container_name: users
-    restart: always
+    restart: unless-stopped
     image: dd_services/users
     build:
         context: ./users
@@ -45,12 +47,7 @@ services:
     environment:
       - HOST=${USERS_HOST}
       - PORT=${USERS_PORT}
-      - DB_URL=mongodb://${USERS_DATABASE_USER}:${USERS_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${USERS_DATABASE_NAME}
-      - DB_HOST=${DATABASE_HOST}
-      - DB_PORT=${DATABASE_PORT}
-      - DB_DATABASE=${USERS_DATABASE_NAME}
-      - DB_USER=${USERS_DATABASE_USER}
-      - DB_PASSWORD=${USERS_DATABASE_PASSWORD}
+      - DB_URL=mongodb://${USERS_DATABASE_USER}:${USERS_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/dd_services_users
       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
       - REFRESH_KEY_PASSPHRASE=${REFRESH_KEY_PASSPHRASE}
       - ACCESS_TOKEN_TTL=${ACCESS_TOKEN_TTL}
@@ -78,7 +75,7 @@ services:
 
   files:
     container_name: files
-    restart: always
+    restart: unless-stopped
     image: dd_services/files
     build:
         context: ./files
@@ -94,13 +91,7 @@ services:
       - UPLOAD_HOST=${FILES_UPLOAD_HOST}
       - UPLOAD_PORT=${FILES_UPLOAD_PORT}
       - UPLOAD_LINK_TTL=${UPLOAD_LINK_TTL}
-      - DB_URL=mongodb://${FILES_DATABASE_USER}:${FILES_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${FILES_DATABASE_NAME}
-      - DB_HOST=${DATABASE_HOST}
-      - DB_PORT=${DATABASE_PORT}
-      - DB_DATABASE=${FILES_DATABASE_NAME}
-      - DB_COLLECTION_NAME_USER_SESSIONS=${FILES_USER_SESSION_DATABASE_NAME}
-      - DB_USER=${FILES_DATABASE_USER}
-      - DB_PASSWORD=${FILES_DATABASE_PASSWORD}
+      - DB_URL=mongodb://${FILES_DATABASE_USER}:${FILES_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/dd_services_files
       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
       - KAFKA_URL=kafka_1:9092
       - CACHE_HOST=${CACHE_HOST}
@@ -119,7 +110,7 @@ services:
 
   sessions:
     container_name: sessions
-    restart: always
+    restart: unless-stopped
     image: dd_services/sessions
     build:
         context: ./sessions
@@ -132,12 +123,7 @@ services:
     environment:
       - HOST=${SESSIONS_HOST}
       - PORT=${SESSIONS_PORT}
-      - DB_URL=mongodb://${SESSIONS_DATABASE_USER}:${SESSIONS_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${SESSIONS_DATABASE_NAME}
-      - DB_HOST=${DATABASE_HOST}
-      - DB_PORT=${DATABASE_PORT}
-      - DB_DATABASE=${SESSIONS_DATABASE_NAME}
-      - DB_USER=${SESSIONS_DATABASE_USER}
-      - DB_PASSWORD=${SESSIONS_DATABASE_PASSWORD}
+      - DB_URL=mongodb://${SESSIONS_DATABASE_USER}:${SESSIONS_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/dd_services_sessions
       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
       - KAFKA_URL=kafka_1:9092
       - CACHE_HOST=${CACHE_HOST}
@@ -155,14 +141,13 @@ services:
 
   gateway:
     container_name: gateway
-    restart: always
+    restart: unless-stopped
     image: dd_services/gateway
     build:
         context: ./gateway
     ports:
-      - 80:80
+      - ${GATEWAY_PORT}:${GATEWAY_PORT}
     volumes:
-      # - ./gateway:/services/gateway
       - gateway:/services/gateway
     environment:
       - HOST=${GATEWAY_HOST}
@@ -179,6 +164,31 @@ services:
       - users
       - sessions
 
+  # subscriptions:
+  #     container_name: subscriptions
+  #     restart: unless-stopped
+  #     image: dd_services/subscriptions
+  #     build:
+  #         context: ./subscriptions
+  #     ports:
+  #       - ${SUBSCRIPTIONS_PORT}:${SUBSCRIPTIONS_PORT}
+  #     volumes:
+  #       - subscriptions:/services/subscriptions
+  #     environment:
+  #       - HOST=${SUBSCRIPTIONS_HOST}
+  #       - PORT=${SUBSCRIPTIONS_PORT}
+  #       - DB_URL=mongodb://${SUBSCRIPTIONS_DATABASE_USER}:${SUBSCRIPTIONS_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/dd_services_subscriptions
+  #       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
+  #       - KAFKA_URL=kafka_1:9092
+  #       - CACHE_HOST=${CACHE_HOST}
+  #       - CACHE_PORT=${CACHE_PORT}
+  #       - CACHE_PASSWORD=${CACHE_PASSWORD}
+  #     networks:
+  #       - kafka
+  #       - public
+  #     depends_on:
+  #       - kafka_1
+
   leader_db:
     image: mongo:6.0
     container_name: leader_db
@@ -194,26 +204,23 @@ services:
       - BACKUP_DATABASE_1_HOST=${BACKUP_DATABASE_1_HOST}
       - BACKUP_DATABASE_2_HOST=${BACKUP_DATABASE_2_HOST}
       - DATABASE_PORT=${DATABASE_PORT}
-      - USERS_DATABASE_NAME=${USERS_DATABASE_NAME}
       - USERS_DATABASE_USER=${USERS_DATABASE_USER}
       - USERS_DATABASE_PASSWORD=${USERS_DATABASE_PASSWORD}
-      - FILES_DATABASE_NAME=${FILES_DATABASE_NAME}
       - FILES_DATABASE_USER=${FILES_DATABASE_USER}
       - FILES_DATABASE_PASSWORD=${FILES_DATABASE_PASSWORD}
-      - FILES_USER_SESSION_DATABASE_NAME=${FILES_USER_SESSION_DATABASE_NAME}
-      - SESSIONS_DATABASE_NAME=${SESSIONS_DATABASE_NAME}
       - SESSIONS_DATABASE_USER=${SESSIONS_DATABASE_USER}
       - SESSIONS_DATABASE_PASSWORD=${SESSIONS_DATABASE_PASSWORD}
+      - SUBSCRIPTIONS_DATABASE_USER=${SUBSCRIPTIONS_DATABASE_USER}
+      - SUBSCRIPTIONS_DATABASE_PASSWORD=${SUBSCRIPTIONS_DATABASE_PASSWORD}
       - INTROSPECTION_BEARER_TOKEN=${GATEWAY_BEARER_TOKEN}
     expose:
         - ${DATABASE_PORT}
-    restart: always
+    restart: unless-stopped
     volumes:
       - leaderDB:/data/db
       - leaderDB_config:/data/configdb
       - leaderDB_logs:/data/logs
       - ./dbs/scripts/rs-init.sh:/scripts/rs-init.sh
-      # - ./dbs/scripts/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh
       - ./dbs/keyfile/keyfile.key:/keyfile/keyfile.key
     entrypoint:
       - bash
@@ -244,7 +251,7 @@ services:
             chown 999:999 /keyfile/keyfile.key
             exec docker-entrypoint.sh $$@ 
     command: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", $REPLICA_SET_NAME, "--logpath", "/data/logs/mongo.log", "--auth", "--keyFile", "./keyfile/keyfile.key" ]
-    restart: always
+    restart: unless-stopped
     volumes:
       - backupDB_1:/data/db
       - backupDB_1_config:/data/configdb
@@ -270,7 +277,7 @@ services:
           chown 999:999 /keyfile/keyfile.key
           exec docker-entrypoint.sh $$@ 
     command: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", $REPLICA_SET_NAME, "--logpath", "/data/logs/mongo.log", "--auth", "--keyFile", "./keyfile/keyfile.key" ]
-    restart: always
+    restart: unless-stopped
     volumes:
       - backupDB_2:/data/db
       - backupDB_2_config:/data/configdb
@@ -304,6 +311,7 @@ volumes:
     #   type: none
     #   device: ${PWD}/gateway
     #   o: bind
+  # subscriptions:
   users:
     # driver_opts:
     #   type: none

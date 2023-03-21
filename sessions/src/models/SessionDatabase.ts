@@ -8,6 +8,9 @@ import { DBFunction, DBFunctionPayload, RawUpdatePayload, verifyRawUpdatePayload
 import { getOtherRole, UserRole } from '../types/UserRole'
 import { InternalServerError } from '../types/Errors'
 
+const DB_NAME = 'dd_services_sessions'
+const COLLECTION_NAME = 'sessions'
+
 const getAffectedEntities = (session: Session): Entity[] => {
   const parentSession: Entity[] = session.parentSession
     ? [ { type: EntityType.SESSION, id: session.parentSession } ]
@@ -39,11 +42,8 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
 
     mongo = new MongoClient(dbUrl)
 
-    const dbName = process.env.DB_DATABASE
-    if (!dbName) { throw new InternalServerError('No DB_DATABASE provided in environment.') }
-
-    const database = mongo.db(dbName)
-    const collection = database.collection('sessions')
+    const database = mongo.db(DB_NAME)
+    const collection = database.collection(COLLECTION_NAME)
     sessionsChangeStream = collection.watch([], {
       fullDocumentBeforeChange: 'required',
       fullDocument: 'updateLookup',

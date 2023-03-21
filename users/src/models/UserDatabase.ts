@@ -5,6 +5,8 @@ import { MessageEvent } from '../types/kafka/EventMessage'
 import { EntityType } from '../types/kafka/Entity'
 import { KafkaTopic } from '../types/kafka/KafkaTopic'
 
+const DB_NAME = 'dd_services_users'
+const COLLECTION_NAME = 'users'
 const getUserRepresentationFrom = (dbUser: any): Partial<User> => ({
   id: dbUser._id,
   nickname: dbUser.nickname,
@@ -24,11 +26,8 @@ export const createUserDB = async (events: EventHandler): Promise<UserDatabase> 
 
     mongo = new MongoClient(dbUrl)
 
-    const dbName = process.env.DB_DATABASE
-    if (!dbName) {throw new Error('No DB_DATABASE provided in environment.')}
-
-    const database = mongo.db(dbName)
-    const collection = database.collection('users')
+    const database = mongo.db(DB_NAME)
+    const collection = database.collection(COLLECTION_NAME)
     usersChangeStream = collection.watch([], {
       fullDocumentBeforeChange: 'required',
       fullDocument: 'updateLookup',

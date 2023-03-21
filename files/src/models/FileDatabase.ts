@@ -9,6 +9,9 @@ import { InternalServerError } from '../types/Errors'
 import { UploadHandler } from './UploadHandler'
 import { getFileTypeFrom } from '../types/FileType'
 
+const DB_NAME = 'dd_services_files'
+const COLLECTION_NAME = 'files'
+
 const getAffectedEntities = (file: File): Entity[] => {
   const affectedOwner: Entity[] = file.owner ? [ { type: EntityType.USER, id: file.owner } ] : []
   const affectedSessions: Entity[] = file.sessions.map((id): Entity => ({ type: EntityType.SESSION, id }))
@@ -40,11 +43,8 @@ export const createFileDB = async (events: EventHandler, uploadHandler: UploadHa
 
     mongo = new MongoClient(dbUrl)
 
-    const dbName = process.env.DB_DATABASE
-    if (!dbName) { throw new InternalServerError('No DB_DATABASE provided in environment.') }
-
-    const database = mongo.db(dbName)
-    const collection = database.collection(dbName)
+    const database = mongo.db(DB_NAME)
+    const collection = database.collection(COLLECTION_NAME)
     filesChangeStream = collection.watch([], {
       fullDocumentBeforeChange: 'required',
       fullDocument: 'updateLookup',
