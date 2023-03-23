@@ -139,7 +139,7 @@ export default {
           const payload = await context.db.addUsersAsParticipants(session, [ context.currentUser.userId ])
           if (payload.nModified === 0) { throw new Error('') }
         } catch {
-          throw new InternalServerError('Could not add users as owners of this session.')
+          throw new InternalServerError('Could not add user as participant of this session.')
         }
 
         session.updatedAt = moment().toDate()

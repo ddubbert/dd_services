@@ -22,7 +22,7 @@ model File {
     createdAt       DateTime    @default(now())
     updatedAt       DateTime    @updatedAt
 
-    @@map("files")
+    @@map("dd_files")
 }
 
 model UserSession {
@@ -30,5 +30,5 @@ model UserSession {
     session         String      @unique
     users           String[]    @default([])
 
-    @@map("userSessions")
+    @@map("dd_userSessions")
 }
