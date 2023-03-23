@@ -5,8 +5,9 @@ import { MessageEvent } from '../types/kafka/EventMessage'
 import { EntityType } from '../types/kafka/Entity'
 import { KafkaTopic } from '../types/kafka/KafkaTopic'
 
-const DB_NAME = 'dd_services_users'
-const COLLECTION_NAME = 'users'
+const DB_NAME = process.env.DATABASE_NAME ?? 'dd_services_users'
+const COLLECTION_NAME = 'dd_users'
+
 const getUserRepresentationFrom = (dbUser: any): Partial<User> => ({
   id: dbUser._id,
   nickname: dbUser.nickname,
@@ -89,7 +90,7 @@ export const createUserDB = async (events: EventHandler): Promise<UserDatabase> 
 
   const createDeletionIndex = async (): Promise<Prisma.JsonObject> =>
     await prisma.$runCommandRaw({
-      createIndexes: 'users',
+      createIndexes: COLLECTION_NAME,
       indexes: [
         {
           key: { refreshEnd: 1 },

@@ -9,8 +9,8 @@ import { InternalServerError } from '../types/Errors'
 import { UploadHandler } from './UploadHandler'
 import { getFileTypeFrom } from '../types/FileType'
 
-const DB_NAME = 'dd_services_files'
-const COLLECTION_NAME = 'files'
+const DB_NAME = process.env.DATABASE_NAME ?? 'dd_services_files'
+const COLLECTION_NAME = 'dd_files'
 
 const getAffectedEntities = (file: File): Entity[] => {
   const affectedOwner: Entity[] = file.owner ? [ { type: EntityType.USER, id: file.owner } ] : []
@@ -190,7 +190,7 @@ export const createFileDB = async (events: EventHandler, uploadHandler: UploadHa
       multi: true,
     } ]
 
-    const payload = await (createRawCommand({ update: 'files', updates }))()
+    const payload = await (createRawCommand({ update: COLLECTION_NAME, updates }))()
     verifyRawUpdatePayload(payload)
     return payload
   }
