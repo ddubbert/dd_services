@@ -8,8 +8,8 @@ import { DBFunction, DBFunctionPayload, RawUpdatePayload, verifyRawUpdatePayload
 import { getOtherRole, UserRole } from '../types/UserRole'
 import { InternalServerError } from '../types/Errors'
 
-const DB_NAME = 'dd_services_sessions'
-const COLLECTION_NAME = 'sessions'
+const DB_NAME = process.env.DATABASE_NAME ?? 'dd_services_sessions'
+const COLLECTION_NAME = 'dd_sessions'
 
 const getAffectedEntities = (session: Session): Entity[] => {
   const parentSession: Entity[] = session.parentSession
@@ -124,7 +124,7 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
 
   const createDateDeletionIndex = async (): Promise<Prisma.JsonObject> =>
     await prisma.$runCommandRaw({
-      createIndexes: 'sessions',
+      createIndexes: COLLECTION_NAME,
       indexes: [
         {
           key: { deletedAt: 1 },
@@ -218,7 +218,7 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
       },
     } ]
 
-    const payload = await (createRawCommand({ update: 'sessions', updates }))()
+    const payload = await (createRawCommand({ update: COLLECTION_NAME, updates }))()
     verifyRawUpdatePayload(payload)
     return payload
   }
@@ -233,7 +233,7 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
       multi: true,
     } ]
 
-    const payload = await (createRawCommand({ update: 'sessions', updates }))()
+    const payload = await (createRawCommand({ update: COLLECTION_NAME, updates }))()
     verifyRawUpdatePayload(payload)
     return payload
   }
@@ -255,7 +255,7 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
       }))
     }
 
-    return createRawCommand({ update: 'sessions', updates })
+    return createRawCommand({ update: COLLECTION_NAME, updates })
   }
 
   const createRawCommand = (command: Prisma.InputJsonObject): DBFunction<Prisma.JsonObject|never> =>

@@ -41,36 +41,36 @@ db.auth("$MONGO_INITDB_ROOT_USERNAME", "$MONGO_INITDB_ROOT_PASSWORD")
 
 rs.status()
 
-use dd_services_users
-db.createCollection("users", { changeStreamPreAndPostImages: { enabled: true } })
+use $USERS_DATABASE_NAME
+db.createCollection("dd_users", { changeStreamPreAndPostImages: { enabled: true } })
 db.createUser({
   user: "$USERS_DATABASE_USER",
   pwd: "$USERS_DATABASE_PASSWORD",
-  roles: [{ role: "readWrite", db: "dd_services_users" }]
+  roles: [{ role: "readWrite", db: "$USERS_DATABASE_NAME" }]
 })
 
-use dd_services_files
-db.createCollection("files", { changeStreamPreAndPostImages: { enabled: true } })
-db.createCollection("userSessions", { changeStreamPreAndPostImages: { enabled: true } })
+use $FILES_DATABASE_NAME
+db.createCollection("dd_files", { changeStreamPreAndPostImages: { enabled: true } })
+db.createCollection("dd_userSessions", { changeStreamPreAndPostImages: { enabled: true } })
 db.createUser({
   user: "$FILES_DATABASE_USER",
   pwd: "$FILES_DATABASE_PASSWORD",
-  roles: [{ role: "readWrite", db: "dd_services_files" }]
+  roles: [{ role: "readWrite", db: "$FILES_DATABASE_NAME" }]
 })
 
-use dd_services_sessions
-db.createCollection("sessions", { changeStreamPreAndPostImages: { enabled: true } })
+use $SESSIONS_DATABASE_NAME
+db.createCollection("dd_sessions", { changeStreamPreAndPostImages: { enabled: true } })
 db.createUser({
   user: "$SESSIONS_DATABASE_USER",
   pwd: "$SESSIONS_DATABASE_PASSWORD",
-  roles: [{ role: "readWrite", db: "dd_services_sessions" }]
+  roles: [{ role: "readWrite", db: "$SESSIONS_DATABASE_NAME" }]
 })
 
-use dd_services_subscriptions
-db.createCollection("subscriptions", { changeStreamPreAndPostImages: { enabled: true } })
+use $SUBSCRIPTIONS_DATABASE_NAME
+db.createCollection("dd_subscriptions", { changeStreamPreAndPostImages: { enabled: true } })
 db.createUser({
   user: "$SUBSCRIPTIONS_DATABASE_USER",
   pwd: "$SUBSCRIPTIONS_DATABASE_PASSWORD",
-  roles: [{ role: "readWrite", db: "dd_services_subscriptions" }]
+  roles: [{ role: "readWrite", db: "$SUBSCRIPTIONS_DATABASE_NAME" }]
 })
 EOF
