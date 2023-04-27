@@ -3,6 +3,7 @@ import { Entity, verifyEntity } from './Entity'
 export interface EventMessage {
   event: MessageEvent
   entity: Entity
+  entityBefore?: Entity
   message?: string
 }
 
