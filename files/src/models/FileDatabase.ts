@@ -1,6 +1,6 @@
 import { Prisma, PrismaClient, File } from '@prisma/client'
 import EventHandler from './EventHandler'
-import { ChangeStream, MongoClient } from 'mongodb'
+import { ChangeStream, Document, MongoClient } from 'mongodb'
 import { KafkaTopic } from '../types/kafka/KafkaTopic'
 import { MessageEvent } from '../types/kafka/EventMessage'
 import { Entity, EntityType } from '../types/kafka/Entity'
@@ -18,19 +18,15 @@ const getAffectedEntities = (file: File): Entity[] => {
   return [ ...affectedOwner, ...affectedSessions ]
 }
 
-const getFileRepresentationFrom = (dbFile: any): Partial<File & { mimetype: string }> => ({
-  id: dbFile._id,
-  name: dbFile.name,
-  description: dbFile.description,
-  type: getFileTypeFrom(dbFile.type),
-  mimetype: dbFile.type,
-  size: dbFile.size,
-  creator: dbFile.creator,
-  owner: dbFile.owner,
-  sessions: dbFile.sessions,
-  createdAt: dbFile.createdAt,
-  updatedAt: dbFile.updatedAt,
-})
+const getEntityFrom = (doc: Document, id: string): Entity => {
+  const entity: Entity = { type: EntityType.FILE, id }
+
+  doc.id = doc._id
+  const affectedEntities = getAffectedEntities(doc as File)
+  if (affectedEntities.length > 0) { entity.connectedTo = affectedEntities }
+
+  return entity
+}
 
 export const createFileDB = async (events: EventHandler, uploadHandler: UploadHandler): Promise<FileDatabase> => {
   const prisma = new PrismaClient()
@@ -53,36 +49,20 @@ export const createFileDB = async (events: EventHandler, uploadHandler: UploadHa
     filesChangeStream.on('change', async next => {
       switch (next.operationType) {
       case 'insert': {
-        console.log('DB-Event: File created')
-        const entity: Entity = { type: EntityType.FILE, id: next.documentKey._id.toString() }
         const doc = next.fullDocument
-        doc.id = doc._id
-
-        const affectedEntities = getAffectedEntities(doc as File)
-        if (affectedEntities.length > 0) { entity.connectedTo = affectedEntities }
 
         await events.send(KafkaTopic.FILES, [ {
           event: MessageEvent.CREATED,
-          entity,
-          message: JSON.stringify(getFileRepresentationFrom(doc)),
+          entity: getEntityFrom(doc, next.documentKey._id.toString()),
         } ])
         break
       }
       case 'update': {
-        console.log('DB-Event: File updated')
-        const id = next.documentKey._id.toString()
-        const entity: Entity = { type: EntityType.FILE, id }
         const doc = next.fullDocument
-        let fileHasOwnerOrSessions = true
-        let message: string | undefined
+        if (doc == null) { return }
 
-        if (doc) {
-          doc.id = doc._id
-          const affectedEntities = getAffectedEntities(doc as File)
-          if (affectedEntities.length > 0) { entity.connectedTo = affectedEntities }
-          fileHasOwnerOrSessions = !!doc.owner || doc.sessions.length > 0
-          message = JSON.stringify(getFileRepresentationFrom(doc))
-        }
+        const id = next.documentKey._id.toString()
+        const fileHasOwnerOrSessions = !!doc.owner || doc.sessions.length > 0
 
         if (!fileHasOwnerOrSessions) {
           try {
@@ -92,37 +72,31 @@ export const createFileDB = async (events: EventHandler, uploadHandler: UploadHa
             console.log(`File ${id} could not be deleted.`)
           }
         } else {
+          const docBefore = next.fullDocumentBeforeChange
+
           await events.send(KafkaTopic.FILES, [ {
             event: MessageEvent.UPDATED,
-            entity,
-            message,
+            entity: getEntityFrom(doc, id),
+            entityBefore: (docBefore != null) ? getEntityFrom(docBefore, id) : undefined,
           } ])
         }
         break
       }
       case 'delete': {
-        console.log('DB-Event: File deleted')
-        const entity: Entity = { type: EntityType.FILE, id: next.documentKey._id.toString() }
         const doc = next.fullDocumentBeforeChange
-        let message: string | undefined
+        if (doc == null) { return }
 
-        if (doc) {
-          doc.id = doc._id
-          const affectedEntities = getAffectedEntities(doc as File)
-          if (affectedEntities.length > 0) { entity.connectedTo = affectedEntities }
-          message = JSON.stringify(getFileRepresentationFrom(doc))
-
-          try {
-            await uploadHandler.deleteFiles([ doc.localId ])
-          } catch (e) {
-            console.log('Could not delete files') // TODO: Backup plan
-          }
+        try {
+          await uploadHandler.deleteFiles([ doc.localId ])
+        } catch (e) {
+          console.log('Could not delete files') // TODO: Backup plan
         }
+
+        const id = next.documentKey._id.toString()
 
         await events.send(KafkaTopic.FILES, [ {
           event: MessageEvent.DELETED,
-          entity,
-          message,
+          entity: getEntityFrom(doc, id),
         } ])
         break
       }
