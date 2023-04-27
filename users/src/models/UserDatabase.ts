@@ -8,14 +8,6 @@ import { KafkaTopic } from '../types/kafka/KafkaTopic'
 const DB_NAME = process.env.DATABASE_NAME ?? 'dd_services_users'
 const COLLECTION_NAME = 'dd_users'
 
-const getUserRepresentationFrom = (dbUser: any): Partial<User> => ({
-  id: dbUser._id,
-  nickname: dbUser.nickname,
-  isPermanent: dbUser.isPermanent,
-  createdAt: dbUser.createdAt,
-  updatedAt: dbUser.updatedAt,
-})
-
 export const createUserDB = async (events: EventHandler): Promise<UserDatabase> => {
   const prisma = new PrismaClient()
   let mongo: MongoClient
@@ -37,47 +29,32 @@ export const createUserDB = async (events: EventHandler): Promise<UserDatabase> 
     usersChangeStream.on('change', async next => {
       switch (next.operationType) {
       case 'insert': {
-        console.log('DB-Event: user created')
         await events.send(KafkaTopic.USERS, [ {
           event: MessageEvent.CREATED,
           entity: {
             type: EntityType.USER,
             id: next.documentKey._id.toString(),
           },
-          message: JSON.stringify(getUserRepresentationFrom(next.fullDocument)),
         } ])
         break
       }
       case 'update': {
-        console.log('DB-Event: user updated')
-        const doc = next.fullDocument
-        let message: string | undefined
-
-        if (doc) { message = JSON.stringify(getUserRepresentationFrom(doc)) }
-
         await events.send(KafkaTopic.USERS, [ {
           event: MessageEvent.UPDATED,
           entity: {
             type: EntityType.USER,
             id: next.documentKey._id.toString(),
           },
-          message,
         } ])
         break
       }
       case 'delete': {
-        console.log('DB-Event: user deleted')
-        const doc = next.fullDocumentBeforeChange
-        let message: string | undefined
-
-        if (doc) { message = JSON.stringify(getUserRepresentationFrom(doc)) }
         await events.send(KafkaTopic.USERS, [ {
           event: MessageEvent.DELETED,
           entity: {
             type: EntityType.USER,
             id: next.documentKey._id.toString(),
           },
-          message,
         } ])
         break
       }
