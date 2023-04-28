@@ -4,7 +4,7 @@ import EventHandler from '../models/EventHandler'
 import { AccessTokenContent } from './AccessTokenContent'
 import { UserSessionDatabase } from '../models/UserSessionDatabase'
 import { FileDatabase } from '../models/FileDatabase'
-import { URLSigner } from '../models/URLSigner'
+import { URLSigner } from '../utils/URLSigner'
 import { Request } from 'express'
 import { UploadHandler } from '../models/UploadHandler'
 
