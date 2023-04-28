@@ -1,0 +1,27 @@
+FROM node:16.18
+
+WORKDIR /services/sessions
+
+RUN apt-get update
+
+RUN apt-get install -y openssl
+
+RUN npm install yarn
+
+COPY package.json ./
+
+COPY yarn.lock ./
+
+COPY tsconfig.json ./
+
+COPY prisma ./prisma/
+
+COPY accessKey.pem ./
+
+COPY src ./src/
+
+RUN yarn install
+
+RUN npx prisma generate --schema=./prisma/schema.prisma
+
+CMD [ "yarn", "start" ]
