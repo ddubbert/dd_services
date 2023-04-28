@@ -67,7 +67,7 @@ db.createUser({
 })
 
 use $SUBSCRIPTIONS_DATABASE_NAME
-db.createCollection("dd_subscriptions", { changeStreamPreAndPostImages: { enabled: true } })
+db.createCollection("dd_userSessions", { changeStreamPreAndPostImages: { enabled: true } })
 db.createUser({
   user: "$SUBSCRIPTIONS_DATABASE_USER",
   pwd: "$SUBSCRIPTIONS_DATABASE_PASSWORD",
