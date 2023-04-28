@@ -1,6 +1,6 @@
 import { Prisma, PrismaClient, Session } from '@prisma/client'
 import EventHandler from './EventHandler'
-import { ChangeStream, MongoClient } from 'mongodb'
+import { ChangeStream, Document, MongoClient } from 'mongodb'
 import { KafkaTopic } from '../types/kafka/KafkaTopic'
 import { MessageEvent } from '../types/kafka/EventMessage'
 import { Entity, EntityType } from '../types/kafka/Entity'
@@ -20,16 +20,15 @@ const getAffectedEntities = (session: Session): Entity[] => {
   return [ ...parentSession, ...affectedOwners, ...affectedParticipants ]
 }
 
-const getSessionRepresentationFrom = (dbSession: any): Partial<Session> => ({
-  id: dbSession._id,
-  title: dbSession.title,
-  owners: dbSession.owners,
-  participants: dbSession.participants,
-  parentSession: dbSession.parentSession,
-  createdAt: dbSession.createdAt,
-  updatedAt: dbSession.updatedAt,
-  deletedAt: dbSession.deletedAt,
-})
+const getEntityFrom = (doc: Document, id: string): Entity => {
+  const entity: Entity = { type: EntityType.FILE, id }
+
+  doc.id = doc._id
+  const affectedEntities = getAffectedEntities(doc as Session)
+  if (affectedEntities.length > 0) { entity.connectedTo = affectedEntities }
+
+  return entity
+}
 
 export const createSessionDB = async (events: EventHandler): Promise<SessionDatabase> => {
   const prisma = new PrismaClient()
@@ -52,66 +51,43 @@ export const createSessionDB = async (events: EventHandler): Promise<SessionData
     sessionsChangeStream.on('change', async next => {
       switch (next.operationType) {
       case 'insert': {
-        console.log('DB-Event: session created')
-        const entity: Entity = { type: EntityType.SESSION, id: next.documentKey._id.toString() }
         const doc = next.fullDocument
-        doc.id = doc._id
-
-        const affectedEntities = getAffectedEntities(doc as Session)
-        if (affectedEntities.length > 0) { entity.connectedTo = affectedEntities }
 
         await events.send(KafkaTopic.SESSIONS, [ {
           event: MessageEvent.CREATED,
-          entity,
-          message: JSON.stringify(getSessionRepresentationFrom(doc)),
+          entity: getEntityFrom(doc, next.documentKey._id.toString()),
         } ])
         break
       }
       case 'update': {
-        console.log('DB-Event: session updated')
-        const id = next.documentKey._id.toString()
-        const entity: Entity = { type: EntityType.SESSION, id }
         const doc = next.fullDocument
-        let sessionHasUser = true
-        let message: string | undefined
+        if (doc == null) { return }
+        const id = next.documentKey._id.toString()
 
-        if (doc) {
-          doc.id = doc._id
-          const affectedEntities = getAffectedEntities(doc as Session)
-          if (affectedEntities.length > 0) { entity.connectedTo = affectedEntities }
-          sessionHasUser = (doc.owners.length + doc.participants.length) > 0
-          message = JSON.stringify(getSessionRepresentationFrom(doc))
-        }
+        const sessionHasUser = (doc.owners.length + doc.participants.length) > 0
 
         if (!sessionHasUser) { await deleteSession({ id }) }
         else {
+          const docBefore = next.fullDocumentBeforeChange
           await events.send(KafkaTopic.SESSIONS, [ {
             event: MessageEvent.UPDATED,
-            entity,
-            message,
+            entity: getEntityFrom(doc, id),
+            entityBefore: (docBefore != null) ? getEntityFrom(docBefore, id) : undefined,
           } ])
         }
 
         break
       }
       case 'delete': {
-        console.log('DB-Event: session deleted')
-        const entity: Entity = { type: EntityType.SESSION, id: next.documentKey._id.toString() }
         const doc = next.fullDocumentBeforeChange
-        let message: string | undefined
+        if (doc == null) { return }
+        doc.id = doc._id
 
-        if (doc) {
-          doc.id = doc._id
-          await deleteChildSessionsFor(doc as Session)
-          const affectedEntities = getAffectedEntities(doc as Session)
-          if (affectedEntities.length > 0) { entity.connectedTo = affectedEntities }
-          message = JSON.stringify(getSessionRepresentationFrom(doc))
-        }
+        await deleteChildSessionsFor(doc as Session)
 
         await events.send(KafkaTopic.SESSIONS, [ {
           event: MessageEvent.DELETED,
-          entity,
-          message,
+          entity: getEntityFrom(doc, next.documentKey._id.toString()),
         } ])
         break
       }
