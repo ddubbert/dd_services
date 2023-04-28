@@ -6,8 +6,8 @@ import createUserSessionDB from './models/UserSessionDatabase'
 import EventHandler from './models/EventHandler'
 import createAuthenticator from './models/Authenticator'
 import createFileDB from './models/FileDatabase'
-import createProcessors from './models/EventMessageProcessorCreator'
-import { createSigner } from './models/URLSigner'
+import createProcessors from './utils/EventMessageProcessorCreator'
+import { createSigner } from './utils/URLSigner'
 import { createUploadHandler } from './models/UploadHandler'
 import { startExpressFileServer } from './models/ExpressFileServer';
 
