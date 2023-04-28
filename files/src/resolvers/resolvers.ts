@@ -1,7 +1,7 @@
 import { GraphQLDateTime } from 'graphql-iso-date'
 import { File, Prisma } from '@prisma/client'
 import { FieldResolverFn } from '../types/ResolverFn'
-import { depthLimitedFieldResolver, depthLimitedReferenceResolver } from '../models/PathReader'
+import { depthLimitedFieldResolver, depthLimitedReferenceResolver } from '../utils/PathReader'
 import { DeletionStatus } from '../types/DeletionStatus'
 import { FileFilter } from '../types/FileFilter'
 import { ForbiddenError, InternalServerError, NotFoundError } from '../types/Errors'
