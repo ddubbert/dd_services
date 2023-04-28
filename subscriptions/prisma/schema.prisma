@@ -1,0 +1,17 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-arm64-openssl-1.1.x", "darwin", "linux-musl"]
+}
+
+datasource db {
+    provider = "mongodb"
+    url      = env("DB_URL")
+}
+
+model UserSession {
+    id              String      @id @default(auto()) @map("_id") @db.ObjectId
+    session         String      @unique
+    users           String[]    @default([])
+
+    @@map("dd_userSessions")
+}
