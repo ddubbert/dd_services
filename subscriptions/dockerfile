@@ -1,6 +1,6 @@
 FROM node:16.18
 
-WORKDIR /services/sessions
+WORKDIR /services/subscriptions
 
 RUN apt-get update
 

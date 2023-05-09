@@ -36,8 +36,15 @@ export const createAuthenticator = (): Authenticator => {
     }
   }
 
-  const resolveUser: ResolveUserFn = async (req: Request): Promise<AccessTokenContent|never> => {
-    const token = req.headers.authorization
+  const validateUser = async (user: Maybe<AccessTokenContent>): Promise<AccessTokenContent|never> => {
+    if (!user) {
+      throw new AuthenticationError('Access token not valid or outdated.')
+    }
+
+    return user
+  }
+
+  const validateToken = async (token: Maybe<string>): Promise<AccessTokenContent|never> => {
     if (!token) {
       return validateUser(null)
     }
@@ -48,17 +55,22 @@ export const createAuthenticator = (): Authenticator => {
 
     try {
       return validateUser(await getAccessTokenContent(token))
-    } catch (_e) {
+    } catch {
       return validateUser(null)
     }
   }
 
-  const validateUser = async (user: Maybe<AccessTokenContent>): Promise<AccessTokenContent|never> => {
-    if (!user) {
-      throw new AuthenticationError('Access token not valid or outdated.')
+  const resolveUser: ResolveUserFn = async (req: Request): Promise<AccessTokenContent|never> => {
+    const token = req.headers.authorization
+    if (req.body.operationName == null || req.body.operationName === 'IntrospectionQuery') {
+      return {
+        userId: 'introspection',
+        isPermanent: false,
+        nickname: 'introspection',
+      }
     }
 
-    return user
+    return validateToken(token)
   }
 
   const expressMiddleware: RequestHandler = async (req, res, next) => {
@@ -75,6 +87,7 @@ export const createAuthenticator = (): Authenticator => {
     isGatewayToken,
     resolveUser,
     expressMiddleware,
+    validateToken,
   } as Authenticator
 }
 
@@ -85,4 +98,5 @@ export interface Authenticator {
   isGatewayToken: (token: string) => boolean
   resolveUser: (req: Request) => Promise<AccessTokenContent|never>
   expressMiddleware: RequestHandler
+  validateToken: (token: Maybe<string>) => Promise<AccessTokenContent|never>
 }

@@ -3,7 +3,11 @@ import { gql } from 'apollo-server'
 export default gql`
   scalar DateTime
 
-  type Subscriptions {
+  type Query {
+      _: String
+  }
+
+  type Subscription {
       sessionUpdates(sessionId: ID!): SessionUpdate!
       userUpdates: UserUpdate!
   }
@@ -27,6 +31,8 @@ export default gql`
   enum SessionEvent {
       SESSION_UPDATED
       SESSION_DELETED
+      CONNECTED_SESSION_UPDATED
+      CONNECTED_SESSION_REMOVED
       USER_ADDED
       USER_REMOVED
       FILE_ADDED

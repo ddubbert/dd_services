@@ -1,5 +1,6 @@
 require('dotenv').config()
 
+import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default'
 import { CustomContextData } from './types/Context'
 import createProcessors from './utils/EventMessageProcessorCreator'
 import createUserSessionDB, { UserSessionDatabase } from './models/UserSessionDatabase'
@@ -19,7 +20,8 @@ import { json } from 'body-parser'
 import { makeExecutableSchema } from '@graphql-tools/schema'
 import { WebSocketServer } from 'ws'
 import { useServer } from 'graphql-ws/lib/use/ws'
-import { PubSub } from 'graphql-subscriptions'
+import { RedisPubSub as PubSub } from 'graphql-redis-subscriptions'
+import Redis, { RedisOptions } from 'ioredis'
 
 const startGraphQLServer = async (
   events: EventHandler,
@@ -41,13 +43,29 @@ const startGraphQLServer = async (
     server: graphQLServer,
     path: '/graphql',
   })
-  const serverCleanup = useServer({ schema }, wsServer)
+
+  const serverCleanup = useServer({ schema, context: async (ctx) => {
+    const authHeader = ctx.extra.request.rawHeaders.find(it => it.startsWith('Bearer'))
+    const token = ctx.connectionParams?.Authorization as string
+      ?? ctx.connectionParams?.authentication as string
+      ?? authHeader
+      ?? null
+
+    const currentUser = await auth.validateToken(token)
+
+    return {
+      currentUser,
+      db,
+      pubSub,
+    }
+  } }, wsServer)
 
   const apolloServer = new ApolloServer({
     schema: rateLimitedSchema,
     introspection: true,
     csrfPrevention: true,
     plugins: [
+      ApolloServerPluginLandingPageLocalDefault({ footer: false }),
       ApolloServerPluginDrainHttpServer({ httpServer: graphQLServer }),
       {
         async serverWillStart(): Promise<void | GraphQLServerListener> {
@@ -73,9 +91,6 @@ const startGraphQLServer = async (
       context: async ({ req }): Promise<CustomContextData> => ({
         currentUser: req.currentUser,
         db,
-        auth,
-        events,
-        req,
         pubSub,
       }),
     }),
@@ -95,7 +110,21 @@ const startGraphQLServer = async (
   const events = new EventHandler()
   const db = await createUserSessionDB()
   const auth = createAuthenticator()
-  const pubSub = new PubSub()
+  const redisOptions: RedisOptions = {
+    host: process.env.CACHE_HOST ?? 'redisCache',
+    port: +(process.env.CACHE_PORT ?? 6379),
+    password: process.env.CACHE_PASSWORD ?? undefined,
+    retryStrategy: (times) => {
+      // reconnect after
+      return Math.min(times * 50, 2000)
+    }
+  }
+
+  const pubSub = new PubSub({
+    publisher: new Redis(redisOptions),
+    subscriber: new Redis(redisOptions),
+  })
+
   createProcessors(events, db, pubSub)
   await events.start()
 
