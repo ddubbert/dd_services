@@ -12,3 +12,4 @@ rm -f ./users/refreshPublicKey.pem
 rm -f ./files/accessKey.pem
 rm -f ./files/signing.pem
 rm -f ./sessions/accessKey.pem
+rm -f ./subscriptions/accessKey.pem

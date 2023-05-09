@@ -47,6 +47,7 @@ openssl genrsa -passout pass:${ACCESS_KEY_PASSPHRASE} -out ./users/accessKey.pem
 openssl rsa -passin pass:${ACCESS_KEY_PASSPHRASE} -pubout -in ./users/accessKey.pem -out ./users/accessPublicKey.pem
 cp ./users/accessPublicKey.pem ./sessions/accessKey.pem
 cp ./sessions/accessKey.pem ./files/accessKey.pem
+cp ./files/accessKey.pem ./subscriptions/accessKey.pem
 
 openssl rand -base64 128 -out ./files/signing.pem
 

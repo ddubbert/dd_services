@@ -34,7 +34,7 @@ services:
     volumes: 
       - redisCache:/data
     networks:
-      - services
+      - redis
 
   users:
     container_name: users
@@ -72,7 +72,8 @@ services:
       - kafka
       - services
       - database
-      - public
+      - redis
+      # - public
 
   files:
     container_name: files
@@ -109,6 +110,7 @@ services:
       - services
       - public
       - database
+      - redis
 
   sessions:
     container_name: sessions
@@ -141,6 +143,7 @@ services:
       - kafka
       - services
       - database
+      - redis
 
   gateway:
     container_name: gateway
@@ -167,31 +170,34 @@ services:
       - users
       - sessions
 
-  # subscriptions:
-  #     container_name: subscriptions
-  #     restart: unless-stopped
-  #     image: dd_services/subscriptions
-  #     build:
-  #         context: ./subscriptions
-  #     ports:
-  #       - ${SUBSCRIPTIONS_PORT}:${SUBSCRIPTIONS_PORT}
-  #     volumes:
-  #       - subscriptions:/services/subscriptions
-  #     environment:
-  #       - HOST=${SUBSCRIPTIONS_HOST}
-  #       - PORT=${SUBSCRIPTIONS_PORT}
-  #       - DB_URL=mongodb://${SUBSCRIPTIONS_DATABASE_USER}:${SUBSCRIPTIONS_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${SUBSCRIPTIONS_DATABASE_NAME:-dd_services_subscriptions}
-  #       - DATABASE_NAME=${SUBSCRIPTIONS_DATABASE_NAME:-dd_services_subscriptions}
-  #       - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
-  #       - KAFKA_URL=kafka_1:9092
-  #       - CACHE_HOST=${CACHE_HOST}
-  #       - CACHE_PORT=${CACHE_PORT}
-  #       - CACHE_PASSWORD=${CACHE_PASSWORD}
-  #     networks:
-  #       - kafka
-  #       - public
-  #     depends_on:
-  #       - kafka_1
+  subscriptions:
+      container_name: subscriptions
+      restart: unless-stopped
+      image: dd_services/subscriptions
+      build:
+          context: ./subscriptions
+      ports:
+        - ${SUBSCRIPTIONS_PORT}:${SUBSCRIPTIONS_PORT}
+      volumes:
+        - subscriptions:/services/subscriptions
+      environment:
+        - HOST=${SUBSCRIPTIONS_HOST}
+        - PORT=${SUBSCRIPTIONS_PORT}
+        - DB_URL=mongodb://${SUBSCRIPTIONS_DATABASE_USER}:${SUBSCRIPTIONS_DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${SUBSCRIPTIONS_DATABASE_NAME:-dd_services_subscriptions}
+        - DATABASE_NAME=${SUBSCRIPTIONS_DATABASE_NAME:-dd_services_subscriptions}
+        - ACCESS_KEY_PASSPHRASE=${ACCESS_KEY_PASSPHRASE}
+        - KAFKA_URL=kafka_1:9092
+        - CACHE_HOST=${CACHE_HOST}
+        - CACHE_PORT=${CACHE_PORT}
+        - CACHE_PASSWORD=${CACHE_PASSWORD}
+      networks:
+        - kafka
+        - redis
+        - public
+        - database
+      depends_on:
+        - kafka_1
+        - redisCache
 
   leader_db:
     image: mongo:6.0
@@ -307,6 +313,9 @@ networks:
   database:
     name: database
     internal: true
+  redis:
+    name: redis
+    internal: true
 
 volumes:
   redisCache:
@@ -319,7 +328,11 @@ volumes:
     #   type: none
     #   device: ${PWD}/gateway
     #   o: bind
-  # subscriptions:
+  subscriptions:
+    # driver_opts:
+    #   type: none
+    #   device: ${PWD}/gateway
+    #   o: bind
   users:
     # driver_opts:
     #   type: none
