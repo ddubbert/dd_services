@@ -1,22 +1,9 @@
 import { GraphQLDateTime } from 'graphql-iso-date'
-import { Context } from '../types/Context'
-import moment from 'moment'
-import { DeletionStatus } from '../types/DeletionStatus'
-import { Prisma } from '@prisma/client'
-import { DBFunction, verifyRawUpdatePayload, verifySession } from '../types/DBFunction'
-import { depthLimitedFieldResolver, depthLimitedReferenceResolver } from '../utils/PathReader'
-import { SubscriptionResolverFn } from '../types/ResolverFn'
-import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '../types/Errors'
+import { SubscriptionResolveFn, SubscriptionSubscribeFn } from '../types/ResolverFn'
 import { UserSessionDatabase } from '../models/UserSessionDatabase'
-import { EntityType } from '../types/kafka/Entity'
-import { MessageEvent } from '../types/kafka/EventMessage'
-import {
-  SubscriptionEntityType,
-  SubscriptionSessionEvent,
-  SubscriptionUserEvent
-} from '../types/SubscriptionPayload'
-import { withFilter } from 'graphql-subscriptions'
+import { SubscriptionPayload, SubscriptionSessionEvent, SubscriptionUserEvent } from '../types/SubscriptionPayload'
 import { AuthenticationError } from 'apollo-server'
+import { EntityType } from '../types/kafka/Entity'
 
 const userIsMemberInAllSessions = async (
   sessions: string[],
@@ -27,12 +14,16 @@ const userIsMemberInAllSessions = async (
   return userSessions?.reduce((acc, it) => acc && it.users.includes(user), true) ?? false
 }
 
+const subscriptionResolver = (
+  async (message): Promise<SubscriptionPayload> => message.content
+) as SubscriptionResolveFn
+
 export default {
   DateTime: GraphQLDateTime,
   EntityType: {
-    USER: SubscriptionEntityType.USER,
-    SESSION: SubscriptionEntityType.SESSION,
-    FILE: SubscriptionEntityType.FILE,
+    USER: EntityType.USER,
+    SESSION: EntityType.SESSION,
+    FILE: EntityType.FILE,
   },
   UserEvent: {
     USER_UPDATED: SubscriptionUserEvent.USER_UPDATED,
@@ -48,31 +39,38 @@ export default {
     SESSION_DELETED: SubscriptionSessionEvent.SESSION_DELETED,
     USER_ADDED: SubscriptionSessionEvent.USER_ADDED,
     USER_REMOVED: SubscriptionSessionEvent.USER_REMOVED,
+    CONNECTED_SESSION_UPDATED: SubscriptionSessionEvent.CONNECTED_SESSION_UPDATED,
+    CONNECTED_SESSION_REMOVED: SubscriptionSessionEvent.CONNECTED_SESSION_REMOVED,
     FILE_ADDED: SubscriptionSessionEvent.FILE_ADDED,
     FILE_REMOVED: SubscriptionSessionEvent.FILE_REMOVED,
+  },
+  Query: {
+    _: () => 'placeholder',
   },
   Subscription: {
     sessionUpdates: {
       subscribe: (async (parent, args, context) => {
+        console.log(parent)
+        console.log(args)
+        console.log(context)
         if (!(await userIsMemberInAllSessions([args.sessionId], context.currentUser.userId, context.db))) {
           throw new AuthenticationError('Not authorized.')
         }
-        // TODO
-        return withFilter(
-          () => context.pubSub.asyncIterator('COMMENT_ADDED'),
-          (payload, variables) => {
-            return (
-              payload.commentAdded.repository_name === variables.repoFullName
-            )
-          },
-        )
-      }) as SubscriptionResolverFn,
+
+        return context.pubSub.asyncIterator(`session_${args.sessionId}`)
+      }) as SubscriptionSubscribeFn,
+      resolve: subscriptionResolver,
     },
-    userUpdates: () => {
-      // TODO
-    },
-    fileUpdates: () => {
-      // TODO
+    userUpdates: {
+      subscribe: (
+        async (parent, args, context) => {
+          console.log(parent)
+          console.log(args)
+          console.log(context)
+          return context.pubSub.asyncIterator(`user_${context.currentUser.userId}`)
+        }
+      ) as SubscriptionSubscribeFn,
+      resolve: subscriptionResolver,
     },
   },
 }

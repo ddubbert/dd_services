@@ -3,25 +3,33 @@ import { EventMessageProcessor } from '../types/kafka/EventMessageProcessor'
 import { EventMessage, MessageEvent } from '../types/kafka/EventMessage'
 import { UserSessionDatabase } from '../models/UserSessionDatabase'
 import { KafkaTopic } from '../types/kafka/KafkaTopic'
-import { PubSub } from 'graphql-subscriptions'
+import { RedisPubSub as PubSub } from 'graphql-redis-subscriptions'
 import { Entity, EntityType } from '../types/kafka/Entity'
 import { SubscriptionSessionEvent, SubscriptionUserEvent } from '../types/SubscriptionPayload'
-import { PubSubEvent, PubSubMessage } from '../types/PubSubMessage'
+import { PubSubEvent, PubSubMessage, PubSubSessionMessage, PubSubUserMessage } from '../types/PubSubMessage'
 
-enum DifferenceType { MORE = 'more', LESS_OR_EQUAL = 'less' }
+enum DifferenceType { MORE = 'more', LESS = 'less', UNCHANGED = 'unchanged' }
 type EntityDifference = { type: DifferenceType, entities: Entity[] }
-const getAffectedUsers = (affectedEntities: Entity[] | undefined): Entity[] =>
-  affectedEntities ? affectedEntities.filter(it => it.type === EntityType.USER) : []
+const getAffectedEntities = (affectedEntities: Entity[] | undefined, type: EntityType): Entity[] =>
+  affectedEntities ? affectedEntities.filter(it => it.type === type) : []
 
 const getEntityDifference = (prevEntities: Entity[], currEntities: Entity[]): EntityDifference => {
+  if (prevEntities.length === currEntities.length) {
+    return {
+      type: DifferenceType.UNCHANGED,
+      entities: currEntities,
+    }
+  }
+
   if (prevEntities.length < currEntities.length) {
     return {
       type: DifferenceType.MORE,
       entities: currEntities.filter(it => !prevEntities.some(e => e.id === it.id)),
     }
   }
+
   return {
-    type: DifferenceType.LESS_OR_EQUAL,
+    type: DifferenceType.LESS,
     entities: prevEntities
       .filter(it => !currEntities.some(u => u.id === it.id))
       .map(it => ({ id: it.id, type: it.type })),
@@ -32,35 +40,41 @@ export const createProcessors = (eventHandler: EventHandler,
                                  userSessionDB: UserSessionDatabase,
                                  pubSub: PubSub): void => {
   const notifyUser = async (user: string, event: SubscriptionUserEvent, entity: Entity) => {
+    console.log(`Notified: user_${user}`)
     await pubSub.publish(
-      user,
+      `user_${user}`,
       {
         event: PubSubEvent.USER_EVENT,
         content: { event, entity }
-      }  as PubSubMessage,
+      } as PubSubUserMessage,
     )
   }
 
   const notifySession = async (session: string, event: SubscriptionSessionEvent, entity: Entity) => {
+    console.log(`Notified: session_${session}`)
     await pubSub.publish(
-      session,
+      `session_${session}`,
       {
         event: PubSubEvent.SESSION_EVENT,
         content: { event, entity }
-      }  as PubSubMessage,
+      } as PubSubSessionMessage,
     )
   }
 
-  const notifyUserDifferenceTo = async (session: string, difference: EntityDifference) => {
+  const notifyUserDifferenceTo = async (sessionId: string, difference: EntityDifference) => {
+    if (difference.type === DifferenceType.UNCHANGED) { return }
+
     for (const user of difference.entities) {
       const event = difference.type === DifferenceType.MORE
         ? SubscriptionSessionEvent.USER_ADDED
         : SubscriptionSessionEvent.USER_REMOVED
-      await notifySession(session, event, user)
+      await notifySession(sessionId, event, user)
     }
   }
 
   const notifyFileDifference = async (difference: EntityDifference, file: Entity) => {
+    if (difference.type === DifferenceType.UNCHANGED) { return }
+
     for (const entity of difference.entities) {
       const event = difference.type === DifferenceType.MORE
         ? SubscriptionSessionEvent.FILE_ADDED
@@ -69,81 +83,109 @@ export const createProcessors = (eventHandler: EventHandler,
     }
   }
 
-  const sessionCreated = async (sessionId: string, users: Entity[], session: Entity) => {
+  const sessionCreated = async (session: Entity) => {
+    const connectedUsers = getAffectedEntities(session.connectedTo, EntityType.USER)
+
+    for (const user of connectedUsers) {
+      await notifyUser(user.id, SubscriptionUserEvent.SESSION_ADDED, session)
+    }
+
     try {
-      for (const user of users) {
-        await notifyUser(user.id, SubscriptionUserEvent.SESSION_ADDED, session)
-      }
-      await userSessionDB.createUserSession({ session: sessionId, users: users.map(it => it.id) })
+      await userSessionDB.createUserSession({ session: session.id, users: connectedUsers.map(it => it.id) })
     } catch (e) {
-      console.log('Nothing deleted.')
+      console.log('Nothing deleted after session create.')
+      console.log(e)
     }
   }
 
-  const sessionUpdated = async (sessionId: string, users: Entity[], session: Entity, sessionBefore?: Entity) => {
+  const sessionUpdated = async (session: Entity, sessionBefore?: Entity) => {
+    const connectedSessions = getAffectedEntities(session.connectedTo, EntityType.SESSION)
+    const connectedUsers = getAffectedEntities(session.connectedTo, EntityType.USER)
+
     if (sessionBefore != null) {
-      const usersBefore = getAffectedUsers(sessionBefore.connectedTo)
+      const usersBefore = getAffectedEntities(sessionBefore.connectedTo, EntityType.USER)
+      const userDifference = getEntityDifference(usersBefore, connectedUsers)
 
-      if (usersBefore.length !== users.length) {
-        const difference = getEntityDifference(usersBefore, users)
-
-        await notifyUserDifferenceTo(sessionId, difference)
+      if (userDifference.type !== DifferenceType.UNCHANGED) {
+        await notifyUserDifferenceTo(session.id, userDifference)
       } else {
-        await notifySession(sessionId, SubscriptionSessionEvent.SESSION_UPDATED, session)
+        await notifySession(session.id, SubscriptionSessionEvent.SESSION_UPDATED, session)
 
-        for (const user of users) {
+        for (const connectedSession of connectedSessions) {
+          await notifySession(connectedSession.id, SubscriptionSessionEvent.CONNECTED_SESSION_UPDATED, session)
+        }
+
+        for (const user of connectedUsers) {
           await notifyUser(user.id, SubscriptionUserEvent.SESSION_UPDATED, session)
         }
       }
     }
 
     try {
-      await userSessionDB.updateUserSession({ session: sessionId }, { users: users.map(it => it.id) })
+      await userSessionDB.updateUserSession({ session: session.id }, { users: connectedUsers.map(it => it.id) })
     } catch (e) {
-      console.log('Nothing deleted.')
+      console.log('Nothing deleted after session update.')
+      console.log(e)
     }
   }
 
-  const sessionDeleted = async (sessionId: string, users: Entity[], session: Entity) => {
-    await notifySession(sessionId, SubscriptionSessionEvent.SESSION_DELETED, session)
-    for (const user of users) {
+  const sessionDeleted = async (session: Entity) => {
+    const connectedSessions = getAffectedEntities(session.connectedTo, EntityType.SESSION)
+    const connectedUsers = getAffectedEntities(session.connectedTo, EntityType.USER)
+
+    await notifySession(session.id, SubscriptionSessionEvent.SESSION_DELETED, session)
+
+    for (const connectedSession of connectedSessions) {
+      await notifySession(connectedSession.id, SubscriptionSessionEvent.CONNECTED_SESSION_REMOVED, session)
+    }
+
+    for (const user of connectedUsers) {
       await notifyUser(user.id, SubscriptionUserEvent.SESSION_REMOVED, session)
     }
 
     try {
-      await userSessionDB.deleteUserSession({ session: sessionId })
+      await userSessionDB.deleteUserSession({ session: session.id })
     } catch (e) {
-      console.log('Nothing deleted.')
+      console.log('Nothing deleted after session delete.')
+      console.log(e)
     }
   }
 
-  const fileCreated = async (sessions: Entity[], users: Entity[], file: Entity) => {
-    for (const session of sessions) {
+  const fileCreated = async (file: Entity) => {
+    const connectedSessions = getAffectedEntities(file.connectedTo, EntityType.SESSION)
+    const connectedUsers = getAffectedEntities(file.connectedTo, EntityType.USER)
+
+    for (const session of connectedSessions) {
       await notifySession(session.id, SubscriptionSessionEvent.FILE_ADDED, file)
     }
 
-    for (const user of users) {
+    for (const user of connectedUsers) {
       await notifyUser(user.id, SubscriptionUserEvent.FILE_ADDED, file)
     }
   }
 
-  const fileUpdated = async (sessions: Entity[], users: Entity[], file: Entity, fileBefore?: Entity) => {
-    const sessionsBefore = fileBefore?.connectedTo?.filter(it => it.type === EntityType.SESSION) ?? []
-    const usersBefore = getAffectedUsers(fileBefore?.connectedTo)
+  const fileUpdated = async (file: Entity, fileBefore?: Entity) => {
+    const connectedSessions = getAffectedEntities(file.connectedTo, EntityType.SESSION)
+    const sessionsBefore =  getAffectedEntities(fileBefore?.connectedTo, EntityType.SESSION)
+    const connectedUsers = getAffectedEntities(file.connectedTo, EntityType.USER)
+    const usersBefore = getAffectedEntities(fileBefore?.connectedTo, EntityType.USER)
 
-    const sessionDifference = getEntityDifference(sessionsBefore, sessions)
-    const userDifference = getEntityDifference(usersBefore, users)
+    const sessionDifference = getEntityDifference(sessionsBefore, connectedSessions)
+    const userDifference = getEntityDifference(usersBefore, connectedUsers)
 
     await notifyFileDifference(sessionDifference, file)
     await notifyFileDifference(userDifference, file)
   }
 
-  const fileDeleted = async (sessions: Entity[], users: Entity[], file: Entity) => {
-    for (const session of sessions) {
+  const fileDeleted = async (file: Entity) => {
+    const connectedSessions = getAffectedEntities(file.connectedTo, EntityType.SESSION)
+    const connectedUsers = getAffectedEntities(file.connectedTo, EntityType.USER)
+
+    for (const session of connectedSessions) {
       await notifySession(session.id, SubscriptionSessionEvent.FILE_REMOVED, file)
     }
 
-    for (const user of users) {
+    for (const user of connectedUsers) {
       await notifyUser(user.id, SubscriptionUserEvent.FILE_REMOVED, file)
     }
   }
@@ -161,40 +203,44 @@ export const createProcessors = (eventHandler: EventHandler,
   }
 
   const sessionEventHandler: EventMessageProcessor = async (message: EventMessage) => {
-    const session = message.entity.id
-    const users = getAffectedUsers(message.entity.connectedTo)
+    const session = message.entity
 
     switch (message.event) {
       case MessageEvent.CREATED: {
-        await sessionCreated(session, users, message.entity)
+        console.log('Session created')
+        await sessionCreated(session)
         break
       }
       case MessageEvent.UPDATED: {
-        await sessionUpdated(session, users, message.entity, message.entityBefore)
+        console.log('Session updated')
+        await sessionUpdated(session, message.entityBefore)
         break
       }
       case MessageEvent.DELETED: {
-        await sessionDeleted(session, users, message.entity)
+        console.log('Session deleted')
+        await sessionDeleted(session)
         break
       }
     }
   }
 
   const fileEventHandler: EventMessageProcessor = async (message: EventMessage) => {
-    const sessions = message.entity.connectedTo?.filter(it => it.type === EntityType.SESSION) ?? []
-    const users = getAffectedUsers(message.entity.connectedTo)
+    const file = message.entity
 
     switch (message.event) {
       case MessageEvent.CREATED: {
-        await fileCreated(sessions, users, message.entity)
+        console.log('File created')
+        await fileCreated(file)
         break
       }
       case MessageEvent.UPDATED: {
-        await fileUpdated(sessions, users, message.entity, message.entityBefore)
+        console.log('File updated')
+        await fileUpdated(file, message.entityBefore)
         break
       }
       case MessageEvent.DELETED: {
-        await fileDeleted(sessions, users, message.entity)
+        console.log('File deleted')
+        await fileDeleted(file)
         break
       }
     }

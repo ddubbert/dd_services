@@ -27,6 +27,10 @@ export enum SubscriptionSessionEvent {
   SESSION_DELETED = 'session_deleted',
   USER_ADDED = 'user_added',
   USER_REMOVED = 'user_removed',
+  CONNECTED_SESSION_UPDATED = 'connected_session_updated',
+  CONNECTED_SESSION_REMOVED = 'connected_session_removed',
   FILE_ADDED = 'file_added',
   FILE_REMOVED = 'file_removed'
 }
+
+export type SubscriptionPayload = SubscriptionSessionUpdate | SubscriptionUserUpdate
