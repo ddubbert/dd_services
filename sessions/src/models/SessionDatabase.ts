@@ -21,7 +21,7 @@ const getAffectedEntities = (session: Session): Entity[] => {
 }
 
 const getEntityFrom = (doc: Document, id: string): Entity => {
-  const entity: Entity = { type: EntityType.FILE, id }
+  const entity: Entity = { type: EntityType.SESSION, id }
 
   doc.id = doc._id
   const affectedEntities = getAffectedEntities(doc as Session)
