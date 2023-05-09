@@ -1,6 +1,6 @@
-import KafkaProducer from './KafkaProducer'
+import KafkaProducer from '../utils/KafkaProducer'
 import { EventMessage, verifyEventMessage } from '../types/kafka/EventMessage'
-import KafkaConsumer from './KafkaConsumer'
+import KafkaConsumer from '../utils/KafkaConsumer'
 import { EventMessageProcessor } from '../types/kafka/EventMessageProcessor'
 import { KafkaMessage, Message } from 'kafkajs'
 import { KafkaTopic } from '../types/kafka/KafkaTopic'
