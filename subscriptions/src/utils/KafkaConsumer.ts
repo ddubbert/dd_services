@@ -75,11 +75,11 @@ export default class KafkaConsumer {
 
   private createKafkaConsumer(): Consumer {
     const kafka = new Kafka({
-      clientId: 'sessions-service-consumer',
+      clientId: 'subscriptions-service-consumer',
       brokers: [ this.KAFKA_URL ],
     })
 
     console.log('Creating kafka consumer...')
-    return kafka.consumer({ groupId: 'sessions-consumer-group' })
+    return kafka.consumer({ groupId: 'subscriptions-consumer-group' })
   }
 }

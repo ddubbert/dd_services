@@ -4,14 +4,11 @@ import { Authenticator } from '../models/Authenticator'
 import EventHandler from '../models/EventHandler'
 import { AccessTokenContent } from './AccessTokenContent'
 import { Request } from 'express'
-import { PubSub } from 'graphql-subscriptions'
+import { RedisPubSub as PubSub } from 'graphql-redis-subscriptions'
 
 export interface CustomContextData {
   currentUser: AccessTokenContent
   db: UserSessionDatabase
-  auth: Authenticator
-  events: EventHandler
-  req: Request
   pubSub: PubSub
 }
 export interface Context extends ExecutionContext, CustomContextData {}
@@ -26,14 +23,5 @@ export function verifyContext(data: unknown): asserts data is Context {
   }
   if (!('db' in data)) {
     throw new Error('Decoded context error. Missing required field "db"')
-  }
-  if (!('auth' in data)) {
-    throw new Error('Decoded context error. Missing required field "auth"')
-  }
-  if (!('events' in data)) {
-    throw new Error('Decoded context error. Missing required field "events"')
-  }
-  if (!('req' in data)) {
-    throw new Error('Decoded context error. Missing required field "req"')
   }
 }

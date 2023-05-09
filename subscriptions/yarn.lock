@@ -2661,6 +2661,13 @@ graphql-rate-limit-directive@^2.0.2:
   resolved "https://registry.yarnpkg.com/graphql-rate-limit-directive/-/graphql-rate-limit-directive-2.0.3.tgz#63a773f3cf9ba52cd499a12972c25b3f34242c1e"
   integrity sha512-ruDuPJ8GyjIWm3X3K4OpHEYzMIycTOP6IB+YgqSPt+Xey3MikRCPUffwf8g6q1Ajcc9kgOlOSgvieCCRrVl+Jw==
 
+graphql-redis-subscriptions@^2.6.0:
+  version "2.6.0"
+  resolved "https://registry.yarnpkg.com/graphql-redis-subscriptions/-/graphql-redis-subscriptions-2.6.0.tgz#c733e97a39acf02c2345dc7e971fca5c9fe6c06d"
+  integrity sha512-hWAPkCNSFKpEOJBMLAcbpGl/gv+s1Yho2JIwP9MK2RlvqlWiqhAYqjA/HVRK86nkYsRkBwGgqvaNxtV1fAexBQ==
+  optionalDependencies:
+    ioredis "^5.2.4"
+
 graphql-subscriptions@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/graphql-subscriptions/-/graphql-subscriptions-2.0.0.tgz#11ec181d475852d8aec879183e8e1eb94f2eb79a"
