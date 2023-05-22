@@ -104,3 +104,17 @@ dist
 .tern-port
 
 .DS_Store
+
+# Application-Files
+**/keycloak.json
+**/accessKey.pem
+**/accessPublicKey.pem
+**/refreshKey.pem
+**/refreshPublicKey.pem
+**/signing.pem
+./redisCache
+./kafka/data
+./dbs/leader
+./dbs/backup_1
+./dbs/backup_2
+./dbs/keyfile
