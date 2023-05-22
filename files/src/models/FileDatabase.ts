@@ -7,7 +7,6 @@ import { Entity, EntityType } from '../types/kafka/Entity'
 import { DBFunction, DBFunctionPayload, RawUpdatePayload, verifyRawUpdatePayload } from '../types/DBFunction'
 import { InternalServerError } from '../types/Errors'
 import { UploadHandler } from './UploadHandler'
-import { getFileTypeFrom } from '../types/FileType'
 
 const DB_NAME = process.env.DATABASE_NAME ?? 'dd_services_files'
 const COLLECTION_NAME = 'dd_files'
