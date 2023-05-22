@@ -12,6 +12,7 @@ export default gql`
     getDownloadLinkForFilesOfSession(sessionId: ID!): FileLinkDetails!
     getDownloadLinkForFilesOfUser: FileLinkDetails!
     getFileUploadLink(sessionId: String): FileLinkDetails!
+    getSignedFileUploadLink(sessionId: String, files: [FileUploadRequest!]!): FileLinkDetails!
   }
 
   type Mutation @rateLimit(limit: 150, duration: 60){
@@ -24,12 +25,6 @@ export default gql`
   type FileLinkDetails {
       url: String!
       ttl: Int!
-  }
-
-  input FileFilter {
-      permanent: Boolean = false
-      creator: String
-      type: FileType
   }
 
   type File @key(fields: "id"){
@@ -73,6 +68,19 @@ export default gql`
   enum DeletionStatus {
       SUCCESSFUL
       UNSUCCESSFUL
+  }
+  
+  input FileFilter {
+      permanent: Boolean = false
+      creator: String
+      type: FileType
+  }
+
+  input FileUploadRequest {
+      name: String!
+      mimetype: String!
+      size: Float!
+      description: String
   }
 
   extend schema

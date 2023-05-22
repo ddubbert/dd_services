@@ -1,5 +1,4 @@
 import * as fs from 'fs'
-import { File } from '@prisma/client'
 import { AccessTokenContent } from '../types/AccessTokenContent'
 import { PromiseOrValue } from 'graphql/jsutils/PromiseOrValue'
 import { FILE_FOLDER, FILE_TEMP_FOLDER } from '../types/FilePath'
