@@ -1,4 +1,5 @@
 import { GraphQLError } from 'graphql'
+import { FileUploadRequest } from './FileUploadRequest'
 
 export class TooManyRequestsError extends GraphQLError {
   constructor(message = 'Too many requests.') {
@@ -33,5 +34,41 @@ export class InternalServerError extends GraphQLError {
 export class ForbiddenError extends GraphQLError {
   constructor(message = 'User is not authorized to do this action.') {
     super(message, { extensions: { code: 'FORBIDDEN' } })
+  }
+}
+
+export class FileSizeError extends GraphQLError {
+  constructor(max: number, file: FileUploadRequest) {
+    super(
+      `File "${file.name}" has ${file.size} bytes but only a max of ${max} bytes is allowed per file.`,
+      { extensions: { code: 'FILE_SIZE_ERROR' } },
+    )
+  }
+}
+
+export class FileSizeMismatchError extends GraphQLError {
+  constructor(requestedSize: number, file: FileUploadRequest) {
+    super(
+      `File "${file.name}" has ${file.size} bytes but ${requestedSize} bytes have been previously requested.`,
+      { extensions: { code: 'FILE_SIZE_MISMATCH_ERROR' } },
+    )
+  }
+}
+
+export class FileAmountError extends GraphQLError {
+  constructor(max: number, amount: number) {
+    super(
+      `Only ${max} files can be uploaded at a time but ${amount} were provided.`,
+      { extensions: { code: 'FILE_AMOUNT_ERROR' } },
+    )
+  }
+}
+
+export class UploadSpaceError extends GraphQLError {
+  constructor(remainingSpace: number, requestedSpace: number) {
+    super(
+      `Not enough upload space. Only ${remainingSpace} bytes remaining but ${requestedSpace} where requested.`,
+      { extensions: { code: 'UPLOAD_SPACE_ERROR' } },
+    )
   }
 }

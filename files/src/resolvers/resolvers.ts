@@ -4,9 +4,35 @@ import { FieldResolverFn } from '../types/ResolverFn'
 import { depthLimitedFieldResolver, depthLimitedReferenceResolver } from '../utils/PathReader'
 import { DeletionStatus } from '../types/DeletionStatus'
 import { FileFilter } from '../types/FileFilter'
-import { ForbiddenError, InternalServerError, NotFoundError } from '../types/Errors'
+import {
+  FileAmountError,
+  FileSizeError,
+  ForbiddenError,
+  InternalServerError,
+  NotFoundError,
+  UploadSpaceError
+} from '../types/Errors'
 import { FileType, getFileTypeFrom } from '../types/FileType'
 import { getFileIfUserHasPermissions, userIsMemberInAllSessions } from '../utils/AuthorizationHelper'
+import { FileDatabase } from '../models/FileDatabase'
+
+const MAX_SESSION_UPLOAD_SPACE_IN_BYTE = +(process.env.MAX_SESSION_UPLOAD_SPACE_IN_BYTE ?? 1000000 * 100)
+const MAX_USER_UPLOAD_SPACE_IN_BYTE = +(process.env.MAX_USER_UPLOAD_SPACE_IN_BYTE ?? 1000000 * 100)
+const MAX_FILE_SIZE = +(process.env.MAX_FILE_SIZE ?? 1000000 * 10)
+const MAX_FILE_UPLOAD_AMOUNT = +(process.env.MAX_FILE_UPLOAD_AMOUNT ?? 12)
+
+const calculateRemainingUploadSpace = async (fileDB: FileDatabase, userId: string, sessionId?: string): Promise<number> => {
+  const userFiles: File[] = await fileDB.getFiles({
+    creator: userId,
+    sessions: sessionId == null ? { isEmpty: true } : { has: sessionId },
+  })
+  console.log(sessionId == null ? 'no sessionId provided' : 'sessionId provided')
+  console.log(userFiles)
+
+  const spaceUsed = userFiles.reduce((acc, it) => acc + it.size, 0)
+  const maxSpace = sessionId == null ? MAX_USER_UPLOAD_SPACE_IN_BYTE : MAX_SESSION_UPLOAD_SPACE_IN_BYTE
+  return maxSpace - spaceUsed
+}
 
 export default {
   DateTime: GraphQLDateTime,
@@ -58,6 +84,35 @@ export default {
     getFileUploadLink: (async (parent, args, context) =>
       context.signer.signUploadUrl(context.currentUser, args.sessionId)
     ) as FieldResolverFn,
+    getSignedFileUploadLink: (async (parent, args, context) => {
+      const { sessionId, files } = args
+      if (sessionId == null && !context.currentUser.isPermanent) {
+        throw new ForbiddenError('File upload without session is only allowed to logged in users.')
+      }
+      if (files.length > MAX_FILE_UPLOAD_AMOUNT) {
+        throw new FileAmountError(MAX_FILE_UPLOAD_AMOUNT, files.length)
+      }
+
+      const requestedSpace = files.reduce((acc, it) => {
+        if (it.size > MAX_FILE_SIZE) {
+          throw new FileSizeError(MAX_FILE_SIZE, it)
+        }
+        return acc + it.size
+      }, 0)
+
+      const remainingSpace = await calculateRemainingUploadSpace(
+        context.fileDB,
+        context.currentUser.userId,
+        sessionId,
+      )
+
+      if (remainingSpace < requestedSpace) {
+        throw new UploadSpaceError(remainingSpace, requestedSpace)
+      }
+
+      return context.signer.createSignedUploadUrl(context.currentUser, files, sessionId)
+      // context.signer.signUploadUrl(context.currentUser, args.sessionId)
+    }) as FieldResolverFn,
   },
   Mutation: {
     addFileToSession: (async (parent, args, context) => {

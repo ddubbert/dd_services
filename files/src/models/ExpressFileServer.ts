@@ -3,16 +3,41 @@ import { UserSessionDatabase } from './UserSessionDatabase'
 import { UploadHandler } from './UploadHandler'
 import { Authenticator } from './Authenticator'
 import { URLSigner } from '../utils/URLSigner'
-import express, { RequestHandler } from 'express'
+import express, { Request, RequestHandler } from 'express'
 import multer from 'multer'
 import { FILE_TEMP_FOLDER } from '../types/FilePath'
 import { fileTypeIsValid } from '../types/FileType'
 import { createDownloadHandler } from './DownloadHandler'
 import cors from 'cors'
-import { getFileIfUserHasPermissions } from '../utils/AuthorizationHelper'
-import { BadRequestError, NotFoundError } from '../types/Errors'
+import {
+  BadRequestError,
+  FileSizeError,
+  FileSizeMismatchError,
+  InternalServerError,
+  NotFoundError
+} from '../types/Errors'
 import http from 'http'
 import { v4 } from 'uuid'
+import { FileUploadRequest } from '../types/FileUploadRequest'
+import { Maybe } from '@graphql-tools/utils'
+
+const MAX_FILE_UPLOAD_AMOUNT = +(process.env.MAX_FILE_UPLOAD_AMOUNT ?? 12)
+const MAX_FILE_SIZE = +(process.env.MAX_FILE_SIZE ?? 1000000 * 10)
+
+const matchingFile = (file: FileUploadRequest, files: FileUploadRequest[]): Maybe<FileUploadRequest> => files.find(it =>
+  it.name === file.name && it.mimetype === file.mimetype
+)
+
+const uploadAllowed = (req: Request, file: Express.Multer.File): boolean => {
+  console.log(file)
+  const { allowedUploads } = req
+  if (allowedUploads == null) {
+    throw new InternalServerError('No allowed file uploads found in the request.')
+  }
+
+  const fileRequest: FileUploadRequest = { name: file.originalname, mimetype: file.mimetype, size: file.size }
+  return matchingFile(fileRequest, allowedUploads) !== undefined
+}
 
 export const startExpressFileServer = async (
   fileDB: FileDatabase,
@@ -32,9 +57,10 @@ export const startExpressFileServer = async (
   })
   const uploader = multer({
     storage,
-    fileFilter: (req, file, cb) => cb(null, fileTypeIsValid(file.mimetype)),
+    fileFilter: (req, file, cb) =>
+      cb(null, fileTypeIsValid(file.mimetype) && uploadAllowed(req, file)),
     limits: {
-      fileSize: 1000 * 1000000,
+      fileSize: MAX_FILE_SIZE,
     },
   })
   const downloader = createDownloadHandler()
@@ -43,7 +69,7 @@ export const startExpressFileServer = async (
     '/files',
     cors<cors.CorsRequest>(),
     auth.expressMiddleware,
-    signer.verifyMiddleware,
+    signer.verifySignature,
     (async (req, res, next) => {
       try {
         const ids = req.query.fileId
@@ -68,21 +94,47 @@ export const startExpressFileServer = async (
     }) as RequestHandler
   )
 
+  const verifyFileSizes: RequestHandler = (req, res, next) => {
+    const { allowedUploads, files } = req
+    if (allowedUploads == null) { throw new InternalServerError('No allowed file uploads found in the request.') }
+    if (files == null) { throw new NotFoundError('No files found.') }
+
+    const uploads = Array.isArray(files) ? files : files.file_uploads
+    if (uploads.length === 0) { throw new BadRequestError('No allowed file uploads provided.') }
+
+    uploads.forEach(it => {
+      console.log(it)
+      const file: FileUploadRequest = { name: it.originalname, mimetype: it.mimetype, size: it.size }
+      const allowedUpload = matchingFile(file, allowedUploads)
+
+      if (allowedUpload == null) { throw new BadRequestError(`Uploading file "${file.name}" has not been allowed before.`) }
+      if (file.size > allowedUpload.size * 1.01 || file.size < allowedUpload.size * 0.99) {
+        uploadHandler.rejectFiles(uploads)
+        throw new FileSizeMismatchError(allowedUpload.size, file)
+      }
+    })
+    next()
+  }
+
   app.post(
     '/uploads/:sessionId?',
     cors<cors.CorsRequest>(),
     auth.expressMiddleware,
-    signer.verifyMiddleware,
-    uploader.array('file_uploads', 12),
+    signer.verifySignature,
+    signer.decipherAllowedUploads,
+    uploader.array('file_uploads', MAX_FILE_UPLOAD_AMOUNT),
+    verifyFileSizes,
     (async (req, res, next) => {
       try {
         const files = req.files
         const user = req.currentUser
 
         if (!files) { throw new NotFoundError('No files found.') }
+        const uploads = Array.isArray(files) ? files : files.file_uploads
+        if (uploads.length === 0) { throw new BadRequestError('No allowed file uploads provided.') }
 
         await uploadHandler.publishUploads({
-          uploads: Array.isArray(files) ? files : files.file_uploads,
+          uploads,
           user,
           session: req.params.sessionId,
         })
