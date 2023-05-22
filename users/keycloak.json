@@ -1,7 +1,0 @@
-{
-  "realm": "DD_SERVICES",
-  "auth-server-url": "https://auth.gm.fh-koeln.de:8444",
-  "credentials": {
-    "secret": "a4740b91-6aef-4801-8b94-17958e4aef0b"
-  }
-}
