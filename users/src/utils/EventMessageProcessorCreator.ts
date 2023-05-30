@@ -12,12 +12,12 @@ export const createProcessors = (eventHandler: EventHandler, db: UserDatabase): 
       && message.entity.connectedTo?.length
       && !message.entity.connectedTo.some(it => it.type === EntityType.SESSION)
     ) {
-      const whereIds: Prisma.UserWhereInput[] = message.entity.connectedTo.reduce(
-        (acc, entity) => (entity.type === EntityType.USER) ? [ ...acc, { id: entity.id } ] : acc,
-        [] as Prisma.UserWhereInput[],
+      const whereIds: string[] = message.entity.connectedTo.reduce(
+        (acc, entity) => (entity.type === EntityType.USER) ? [ ...acc, entity.id ] : acc,
+        [] as string[],
       )
 
-      const combinedWhere: Prisma.UserWhereInput = { isPermanent: false, AND: { OR: whereIds } }
+      const combinedWhere: Prisma.UserWhereInput = { AND: [ { isPermanent: false }, { id: { in: whereIds } } ] }
       try{
         await db.deleteUsers(combinedWhere)
         console.log(`Ad-hoc users of session "${message.entity.id}" deleted.`)
@@ -27,18 +27,15 @@ export const createProcessors = (eventHandler: EventHandler, db: UserDatabase): 
     }
   }
 
-  const allEvents: EventMessageProcessor = async (message: EventMessage) => {
-    console.log('Event received:')
-    console.log(message.message)
-    console.log(message.event)
-    console.log(message.entity)
-    console.log('')
-  }
+  // const allEvents: EventMessageProcessor = async (message: EventMessage) => {
+  //   console.log('Event received:')
+  //   console.log(message.message)
+  //   console.log(message.event)
+  //   console.log(message.entity)
+  //   console.log('')
+  // }
 
-  // eventHandler.addMessageProcessorFor(KafkaTopic.SESSIONS, sessionDeleted)
-  eventHandler.addMessageProcessorFor(KafkaTopic.FILES, allEvents)
-  eventHandler.addMessageProcessorFor(KafkaTopic.SESSIONS, allEvents)
-  eventHandler.addMessageProcessorFor(KafkaTopic.USERS, allEvents)
+  eventHandler.addMessageProcessorFor(KafkaTopic.SESSIONS, sessionDeleted)
   // TODO:
   // Maybe send emails on events?
 }
