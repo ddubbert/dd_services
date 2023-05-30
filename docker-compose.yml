@@ -42,8 +42,8 @@ services:
     image: dd_services/users
     build:
         context: ./users
-    ports:
-      - ${USERS_PORT}:${USERS_PORT}
+    expose:
+      - ${USERS_PORT}
     environment:
       - HOST=${USERS_HOST}
       - PORT=${USERS_PORT}
@@ -73,7 +73,7 @@ services:
       - services
       - database
       - redis
-      # - public
+      - public
 
   files:
     container_name: files
@@ -81,6 +81,8 @@ services:
     image: dd_services/files
     build:
         context: ./files
+    expose:
+      - ${FILES_PORT}
     ports:
       - ${FILES_UPLOAD_PORT}:${FILES_UPLOAD_PORT}
     volumes:
@@ -122,8 +124,8 @@ services:
     image: dd_services/sessions
     build:
         context: ./sessions
-    ports:
-      - ${SESSIONS_PORT}:${SESSIONS_PORT}
+    expose:
+      - ${SESSIONS_PORT}
     volumes:
       - sessions:/services/sessions
     links:
