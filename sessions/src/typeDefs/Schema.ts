@@ -6,7 +6,7 @@ export default gql`
   type Query @rateLimit(limit: 150, duration: 60){
     allSessions: [Session!]!
     getSession(sessionId: ID!): Session!
-    getSessions: [Session!]!
+    getSessions(sessionIds: [ID!]): [Session!]!
   }
 
   type Mutation @rateLimit(limit: 150, duration: 60){

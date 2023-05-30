@@ -30,12 +30,20 @@ export default {
   Query: {
     allSessions: (async (parent, args, context) => (await context.db.getSessions())) as FieldResolverFn,
     getSession: (async (parent, args, context) => (await getSessionIfAuthorized(args.sessionId, context))) as FieldResolverFn,
-    getSessions: (async (parent, args, context) => await context.db.getSessions({
-      OR: [
-        { owners: { has: context.currentUser.userId } },
-        { participants: { has: context.currentUser.userId } },
-      ],
-    }) || []) as FieldResolverFn,
+    getSessions: (async (parent, args, context) => {
+      const where: Prisma.SessionWhereInput = {
+        OR: [
+          { owners: { has: context.currentUser.userId } },
+          { participants: { has: context.currentUser.userId } },
+        ],
+      }
+
+      if (args.sessionIds != null) {
+        where.id = { in: args.sessionIds }
+      }
+
+      return await context.db.getSessions(where) || []
+    }) as FieldResolverFn,
   },
   Mutation: {
     createSession: (async (parent, args, context) => {
