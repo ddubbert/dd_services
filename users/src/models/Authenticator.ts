@@ -19,6 +19,9 @@ const keycloak = require('../../keycloak.json')
 type ResolveUserFn = (req: Request) => Promise<UserAuth|never>
 
 export const createAuthenticator = (db: UserDatabase): Authenticator => {
+  if (keycloak == null) {
+    throw new Error('keycloak.json file is missing.')
+  }
   const accessKey = createPrivateKey({
     key: fs.readFileSync('./accessKey.pem'),
     passphrase: process.env.ACCESS_KEY_PASSPHRASE ?? '',
