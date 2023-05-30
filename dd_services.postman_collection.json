@@ -2,7 +2,8 @@
 	"info": {
 		"_postman_id": "e459effb-bb05-47f5-a6c3-ff413a8b2d28",
 		"name": "dd_services",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "27300675"
 	},
 	"item": [
 		{
@@ -1780,18 +1781,18 @@
 									"    pm.response.to.be.ok;",
 									"    pm.response.to.be.withBody;",
 									"    pm.expect(jsonData.data).to.not.be.null;",
-									"    pm.expect(jsonData.data.getFileUploadLink).to.not.be.null;",
+									"    pm.expect(jsonData.data.getSignedFileUploadLink).to.not.be.null;",
 									"})",
 									"",
 									"pm.test('Response should contain url', function() {",
-									"    pm.expect(jsonData.data.getFileUploadLink.url).to.not.be.null;",
+									"    pm.expect(jsonData.data.getSignedFileUploadLink.url).to.not.be.null;",
 									"})",
 									"",
 									"pm.test('Response should contain ttl', function() {",
-									"    pm.expect(jsonData.data.getFileUploadLink.ttl).to.not.be.null;",
+									"    pm.expect(jsonData.data.getSignedFileUploadLink.ttl).to.not.be.null;",
 									"})",
 									"",
-									"pm.collectionVariables.set(\"uploadLink\", jsonData.data.getFileUploadLink.url);"
+									"pm.collectionVariables.set(\"uploadLink\", jsonData.data.getSignedFileUploadLink.url);"
 								],
 								"type": "text/javascript"
 							}
@@ -1809,8 +1810,8 @@
 						"body": {
 							"mode": "graphql",
 							"graphql": {
-								"query": "query ($sessionId: String) {\n  getFileUploadLink(sessionId: $sessionId) {\n    url\n    ttl\n  }\n}",
-								"variables": "{\n    \"sessionId\": \"{{sessionId}}\"\n}"
+								"query": "query ($sessionId: String, $files: [FileUploadRequest!]!) {\n  getSignedFileUploadLink(sessionId: $sessionId, files: $files) {\n    url\n    ttl\n  }\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\",\n    \"files\": [\n        {\n            \"name\": \"Screenshot 2022-11-21 at 17.32.57.png\",\n            \"size\": 100000,\n            \"mimetype\": \"image/png\"\n        },\n        {\n            \"name\": \"Screenshot 2022-11-27 at 17.17.36.png\",\n            \"size\": 100000,\n            \"mimetype\": \"image/png\"\n        }\n    ]\n}"
 							}
 						},
 						"url": {
@@ -1886,6 +1887,56 @@
 			"name": "manual",
 			"item": [
 				{
+					"name": "get session Copy 4",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"",
+									"pm.test('Request should resolve with data', function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.expect(jsonData.data).to.be.null;",
+									"})",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "graphql",
+							"graphql": {
+								"query": "query ($sessionId: ID!) {\n  getSession(sessionId: $sessionId) {\n    ...SessionFrag\n  }\n}\n\nfragment FileFrag on File {\n  id\n  name\n  description\n  downloadLink\n  type\n  mimetype\n  size\n  creator\n  owner {\n    nickname\n  }\n  sessions {\n    id\n  }\n  createdAt\n  updatedAt\n}\n\nfragment SessionFrag on Session {\n  id\n  title\n  owners {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  participants {\n    id\n    nickname\n    isPermanent\n    email\n  }\n  parentSession {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n    childSessions {\n      parentSession {\n        childSessions {\n          parentSession {\n            id\n          }\n        }\n      }\n    }\n  }\n  childSessions {\n    id\n    title\n    owners {\n      nickname\n    }\n    participants {\n      nickname\n    }\n    updatedAt\n    deletedAt\n  }\n  files {\n    ...FileFrag\n  }\n  createdAt\n  updatedAt\n  deletedAt\n}",
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\"\n}"
+							}
+						},
+						"url": {
+							"raw": "http://localhost:80/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "80",
+							"path": [
+								"graphql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Get Download link for session files",
 					"event": [
 						{
@@ -1931,6 +1982,44 @@
 				},
 				{
 					"name": "download files",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{auth}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
+						"url": {
+							"raw": "{{downloadLink}}",
+							"host": [
+								"{{downloadLink}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "download files Copy",
 					"event": [
 						{
 							"listen": "test",
