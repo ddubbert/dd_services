@@ -1,6 +1,6 @@
 # dd_services
 
-Beim ersten Start muss die start.sh ausgeführt werden. Für alle weiteren Startprozesse / wenn die Container bereits vorhanden und eingerichtet sind, kann docker-compose up genutzt werden.
+Vor dem ersten Start ist im users-Ordner zunächst eine "keycloak.json" Datei anzulegen, welche für jeden Client vom jeweiligen Keycloak-Server heruntergeladen werden kann. Beim ersten Start muss die start.sh ausgeführt werden. Für alle weiteren Startprozesse / wenn die Container bereits vorhanden und eingerichtet sind, kann docker-compose up genutzt werden.
 
 Zum starten wird ein .env-File mit folgenden Attributen benötigt (values sind nur Beispiele und sollten kontextbedingt angepasst werden):
 
