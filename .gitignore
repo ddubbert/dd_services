@@ -112,9 +112,9 @@ dist
 **/refreshKey.pem
 **/refreshPublicKey.pem
 **/signing.pem
-./redisCache
-./kafka/data
-./dbs/leader
-./dbs/backup_1
-./dbs/backup_2
-./dbs/keyfile
+dbs/backup_1/
+dbs/backup_2/
+dbs/keyfile/
+dbs/leader/
+kafka/data/
+redisCache/
