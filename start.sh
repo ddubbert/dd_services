@@ -3,6 +3,11 @@
 source .env
 DELAY=40
 
+rm -rf ./files/public
+mkdir -p ./files/public
+mkdir -p ./files/public/tmpFiles
+mkdir -p ./files/public/files
+
 rm -rf ./redisCache
 mkdir -p ./redisCache
 

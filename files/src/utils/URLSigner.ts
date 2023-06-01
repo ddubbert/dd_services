@@ -82,7 +82,6 @@ export const createSigner = (): URLSigner => {
       decrypted += decipher.final(inputEncoding)
       const queryFiles = Object.values(qs.parse(decrypted))
       verifyFileUploadRequestArray(queryFiles)
-      console.log(queryFiles)
       req.allowedUploads = queryFiles
     }
     next()

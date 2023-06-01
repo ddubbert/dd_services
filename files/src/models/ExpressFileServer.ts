@@ -11,9 +11,7 @@ import { createDownloadHandler } from './DownloadHandler'
 import cors from 'cors'
 import {
   BadRequestError,
-  FileSizeError,
   FileSizeMismatchError,
-  InternalServerError,
   NotFoundError
 } from '../types/Errors'
 import http from 'http'
@@ -29,14 +27,18 @@ const matchingFile = (file: FileUploadRequest, files: FileUploadRequest[]): Mayb
 )
 
 const uploadAllowed = (req: Request, file: Express.Multer.File): boolean => {
-  console.log(file)
   const { allowedUploads } = req
   if (allowedUploads == null) {
-    throw new InternalServerError('No allowed file uploads found in the request.')
+    throw new BadRequestError('No allowed file uploads found in the request.')
   }
 
   const fileRequest: FileUploadRequest = { name: file.originalname, mimetype: file.mimetype, size: file.size }
-  return matchingFile(fileRequest, allowedUploads) !== undefined
+  const matching =  matchingFile(fileRequest, allowedUploads)
+  if (matching == null) {
+    throw new BadRequestError(`File "${fileRequest.name}" cant be uploaded with this upload link.`)
+  }
+
+  return true
 }
 
 export const startExpressFileServer = async (
@@ -57,8 +59,13 @@ export const startExpressFileServer = async (
   })
   const uploader = multer({
     storage,
-    fileFilter: (req, file, cb) =>
-      cb(null, fileTypeIsValid(file.mimetype) && uploadAllowed(req, file)),
+    fileFilter: (req, file, cb) => {
+      try {
+        cb(null, fileTypeIsValid(file.mimetype) && uploadAllowed(req, file))
+      } catch (e) {
+        cb(e as Error)
+      }
+    },
     limits: {
       fileSize: MAX_FILE_SIZE,
     },
@@ -96,21 +103,22 @@ export const startExpressFileServer = async (
 
   const verifyFileSizes: RequestHandler = (req, res, next) => {
     const { allowedUploads, files } = req
-    if (allowedUploads == null) { throw new InternalServerError('No allowed file uploads found in the request.') }
-    if (files == null) { throw new NotFoundError('No files found.') }
+    if (allowedUploads == null) { throw new BadRequestError('No allowed file uploads found in the request.') }
+    if (files == null) { throw new BadRequestError('No file uploads provided.') }
 
     const uploads = Array.isArray(files) ? files : files.file_uploads
-    if (uploads.length === 0) { throw new BadRequestError('No allowed file uploads provided.') }
+    if (uploads.length === 0) { throw new BadRequestError('No file uploads provided.') }
 
     uploads.forEach(it => {
-      console.log(it)
       const file: FileUploadRequest = { name: it.originalname, mimetype: it.mimetype, size: it.size }
-      const allowedUpload = matchingFile(file, allowedUploads)
+      const matching = matchingFile(file, allowedUploads)
 
-      if (allowedUpload == null) { throw new BadRequestError(`Uploading file "${file.name}" has not been allowed before.`) }
-      if (file.size > allowedUpload.size * 1.01 || file.size < allowedUpload.size * 0.99) {
+      if (matching == null) {
+        throw new BadRequestError(`File "${file.name}" cant be uploaded with this upload link.`)
+      }
+      if (file.size > matching.size * 1.01 || file.size < matching.size * 0.99) {
         uploadHandler.rejectFiles(uploads)
-        throw new FileSizeMismatchError(allowedUpload.size, file)
+        throw new FileSizeMismatchError(matching.size, file)
       }
     })
     next()
@@ -133,6 +141,7 @@ export const startExpressFileServer = async (
         const uploads = Array.isArray(files) ? files : files.file_uploads
         if (uploads.length === 0) { throw new BadRequestError('No allowed file uploads provided.') }
 
+        console.log(uploads)
         await uploadHandler.publishUploads({
           uploads,
           user,
