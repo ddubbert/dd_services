@@ -23,6 +23,12 @@ export interface UploadHandler {
 
 export const createUploadHandler = (): UploadHandler => {
   const subscribers: UploadSubscriberAction[] = []
+  if (!fs.existsSync(`${FILE_TEMP_FOLDER}`)) {
+    fs.mkdirSync(`${FILE_TEMP_FOLDER}`)
+  }
+  if (!fs.existsSync(`${FILE_FOLDER}`)) {
+    fs.mkdirSync(`${FILE_FOLDER}`)
+  }
 
   const subscribeUploads = (action: UploadSubscriberAction): void => {
     subscribers.push(action)

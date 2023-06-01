@@ -49,7 +49,7 @@ export class FileSizeError extends GraphQLError {
 export class FileSizeMismatchError extends GraphQLError {
   constructor(requestedSize: number, file: FileUploadRequest) {
     super(
-      `File "${file.name}" has ${file.size} bytes but ${requestedSize} bytes have been previously requested.`,
+      `File "${file.name}" has ${file.size} bytes but ${requestedSize} bytes have been previously requested. Request failed.`,
       { extensions: { code: 'FILE_SIZE_MISMATCH_ERROR' } },
     )
   }
