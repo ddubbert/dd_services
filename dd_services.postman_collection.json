@@ -1811,7 +1811,7 @@
 							"mode": "graphql",
 							"graphql": {
 								"query": "query ($sessionId: String, $files: [FileUploadRequest!]!) {\n  getSignedFileUploadLink(sessionId: $sessionId, files: $files) {\n    url\n    ttl\n  }\n}",
-								"variables": "{\n    \"sessionId\": \"{{sessionId}}\",\n    \"files\": [\n        {\n            \"name\": \"Screenshot 2022-11-21 at 17.32.57.png\",\n            \"size\": 100000,\n            \"mimetype\": \"image/png\"\n        },\n        {\n            \"name\": \"Screenshot 2022-11-27 at 17.17.36.png\",\n            \"size\": 100000,\n            \"mimetype\": \"image/png\"\n        }\n    ]\n}"
+								"variables": "{\n    \"sessionId\": \"{{sessionId}}\",\n    \"files\": [\n        {\n            \"name\": \"Screenshot 2022-11-21 at 17.32.57.png\",\n            \"size\": 75997,\n            \"mimetype\": \"image/png\"\n        },\n        {\n            \"name\": \"Screenshot 2022-11-27 at 17.17.36.png\",\n            \"size\": 229168,\n            \"mimetype\": \"image/png\"\n        },\n        {\n            \"name\": \"Screenshot 2022-11-27 at 17.33.41.png\",\n            \"size\": 210527,\n            \"mimetype\": \"image/png\"\n        }\n    ]\n}"
 							}
 						},
 						"url": {
