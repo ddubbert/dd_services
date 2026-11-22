@@ -118,3 +118,5 @@ dbs/keyfile/
 dbs/leader/
 kafka/data/
 redisCache/
+# IDE settings
+.idea/
