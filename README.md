@@ -1,58 +1,43 @@
 # dd_services
 
-Vor dem ersten Start ist im users-Ordner zunächst eine "keycloak.json" Datei anzulegen, welche für jeden Client vom jeweiligen Keycloak-Server heruntergeladen werden kann. Beim ersten Start muss die start.sh ausgeführt werden. Für alle weiteren Startprozesse / wenn die Container bereits vorhanden und eingerichtet sind, kann docker-compose up genutzt werden.
+Backend for ad-hoc collaboration prototypes, built at TH Köln in 2022–2023:
+users can join sessions (also as ad-hoc guests), share files in them and get
+live updates. It is used by the PictShareIt prototype.
 
-Zum starten wird ein .env-File mit folgenden Attributen benötigt (values sind nur Beispiele und sollten kontextbedingt angepasst werden):
+> **Status:** unfinished research prototype, no longer developed. It runs
+> locally with Docker Compose; it was never hardened for production.
 
-REPLICA_SET_NAME=dd_services_db_replica
+## Architecture
 
-DATABASE_PORT=27017
+| Part | What it does |
+|---|---|
+| `gateway/` | Apollo Gateway composing the three GraphQL subgraphs below |
+| `users/` | Accounts and ad-hoc users; authentication via Keycloak, own access/refresh tokens |
+| `sessions/` | Collaboration sessions with owners, participants and child sessions |
+| `files/` | File metadata (GraphQL) plus signed upload/download links served over REST |
+| `subscriptions/` | GraphQL subscriptions: turns Kafka change events into live updates via Redis Pub/Sub |
+| `kafka/` | Kafka + ZooKeeper; every service publishes change events (state before and after) |
+| `dbs/` | MongoDB replica set (one leader, two backups), accessed through Prisma |
 
-ROOT_DATABASE_NAME=dd_services_db
+The GraphQL services apply rate limiting and query depth limiting. The
+diagram is in [`docs/architecture.drawio`](docs/architecture.drawio) (open
+with [draw.io](https://app.diagrams.net)); the whiteboard sketch it started
+from is [`docs/first-design-sketch.jpeg`](docs/first-design-sketch.jpeg).
 
-DATABASE_HOST=leader_db
+## Run it locally
 
-BACKUP_DATABASE_1_HOST=backup_db_1
+Requires Docker with Docker Compose.
 
-BACKUP_DATABASE_2_HOST=backup_db_2
+1. Copy [`.env.example`](.env.example) to `.env` and fill in the values.
+2. Download the Keycloak client adapter config for your realm and save it as
+   `users/keycloak.json`.
+3. First start: `./start.sh` creates the data folders, the MongoDB replica set
+   and the keys, then starts all containers.
+4. Later starts: `docker-compose up`. `./reset.sh` deletes all local state.
 
-ADMIN_USERNAME=adminUser
+`dd_services.postman_collection.json` holds end-to-end tests of the API; set
+its variables (Keycloak server, realm, client, secret, test user) in Postman.
 
-ADMIN_PASSWORD=adminUserPW
+## Licence
 
-ACCESS_KEY_PASSPHRASE=hello
-
-REFRESH_KEY_PASSPHRASE=hello
-
-USERS_HOST=users
-
-USERS_PORT=80
-
-USERS_DATABASE_NAME=users
-
-USERS_DATABASE_USER=usersDatabaseUser
-
-USERS_DATABASE_PASSWORD=usersDatabasePW
-
-FILES_HOST=files
-
-FILES_PORT=80
-
-FILES_UPLOAD_PORT=8081
-
-FILES_DATABASE_NAME=files
-
-FILES_DATABASE_USER=filesDatabaseUser
-
-FILES_DATABASE_PASSWORD=filesDatabasePW
-
-SESSIONS_HOST=sessions
-
-SESSIONS_PORT=80
-
-SESSIONS_DATABASE_NAME=sessions
-
-SESSIONS_DATABASE_USER=sessionsDatabaseUser
-
-SESSIONS_DATABASE_PASSWORD=sessionsDatabasePW
-
+[MIT](LICENSE)
