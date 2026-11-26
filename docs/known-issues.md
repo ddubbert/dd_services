@@ -1,7 +1,7 @@
 # Known issues
 
-Found in 2026 while reconstructing the documentation from the code. None of
-them is fixed yet; each item names where the problem sits.
+Open bugs, security gaps and maintenance work. None of them is fixed yet;
+each item names where the problem sits.
 
 ## Security
 
@@ -40,7 +40,7 @@ them is fixed yet; each item names where the problem sits.
    of the current user (`sessions/src/resolvers/Resolvers.ts`).
 10. **Default session lifetime is 120 seconds.** `SHORT` (the default `ttl`)
     is 120 s, while `X_SHORT` is 4 h (`sessions/src/types/DeletionDelay.ts`).
-    Probably a test value left in.
+    This is a test setting that was never reverted.
 11. **`createOrLoginUser` with a dd_services token creates a new guest**
     instead of returning the current user.
 12. **Guest deletion on session delete is too broad.** The users service
