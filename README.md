@@ -39,8 +39,8 @@ lasting data: logged-in users can keep sessions for up to six months and
 copy files into their own permanent storage. Moving a guest's work into an
 account is part of this idea but not built yet.
 
-> **Status:** unfinished research prototype, no longer developed. It runs
-> locally with Docker Compose; it was never hardened for production.
+> **Status:** unfinished research prototype. It runs locally with Docker
+> Compose; it was never hardened for production.
 
 ## Architecture
 
