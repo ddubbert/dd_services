@@ -22,10 +22,14 @@ An application on top keeps only its own domain logic and works on the same
 users, sessions and files as every other application. Because each service
 publishes its changes as events, new services can be added that react to
 them and build on the shared data for their own use case. Several apps can
-thus complement each other, for example the steps of a brainstorming that
-uses different methods, each step being its own app working on the same
-session and files. PictShareIt, the frontend prototype for this backend, is
-one such app.
+thus complement each other. One example is a brainstorming in several
+steps, each done by its own app on the same session and files:
+
+1. **PictShareIt** (the frontend prototype for this backend): participants
+   join a session, collect pictures and other material, upload it together
+   and may already discuss it.
+2. **MixMonster** then takes the collected images and starts creative
+   processes from random mixes of them (planned connection, not built).
 
 **Ad hoc first, persistent when needed.** Collaboration should start without
 any setup: anyone can join a session as a guest, without an account, for
