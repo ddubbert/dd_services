@@ -27,6 +27,9 @@ where `<accessToken>` is a dd_services access token (see below). On the
 WebSocket, pass it as connection parameter `Authorization` (or
 `authentication`).
 
+How tokens, permissions and signed links are secured is described in
+[security.md](security.md).
+
 Every GraphQL operation is rate limited per user (60 to 150 requests per
 minute depending on the service; `createOrLoginUser` allows 1000).
 
@@ -296,6 +299,11 @@ The link contains the encrypted file list and is only valid until the files
 service restarts (see [known-issues.md](known-issues.md)).
 
 ### Download
+
+Downloads always take two steps, like uploads: first get a signed link
+through GraphQL, then fetch it from the files server with your access
+token. How the links are protected is described in
+[security.md](security.md#signed-file-links).
 
 - **Single file:** `File.downloadLink` (for example from `getFile`,
   `getSession { files { downloadLink } }` or `getAllFilesOfSession`). This

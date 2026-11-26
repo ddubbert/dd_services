@@ -35,6 +35,9 @@ their own copies of what they need from those events.
 - [`docs/api.md`](docs/api.md): endpoints, the order of API calls (login,
   sessions, invites, upload, download, subscriptions) with example
   operations, and the internal event flow.
+- [`docs/security.md`](docs/security.md): passwords and identities, tokens,
+  authorization rules, signed upload/download links, infrastructure, and
+  what is not implemented.
 - [`docs/known-issues.md`](docs/known-issues.md): bugs and security gaps
   found while writing that documentation.
 
