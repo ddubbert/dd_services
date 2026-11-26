@@ -350,6 +350,34 @@ const client = createClient({
 })
 ```
 
+### Why subscriptions bypass the gateway
+
+When dd_services was built (2022), the Apollo Gateway it uses
+(`@apollo/gateway`, JavaScript) could not route GraphQL subscriptions, so
+live updates got their own service with its own endpoint. Clients therefore
+talk to two GraphQL endpoints, and an update only carries ids; the client
+fetches the details through the gateway.
+
+Federation-aware routers that support subscriptions exist today (checked
+November 2026):
+
+- [Hive Router](https://the-guild.dev/graphql/hive/product-updates/2026-04-14-hive-router-subscriptions)
+  (MIT) and [Hive Gateway](https://the-guild.dev/graphql/hive/docs/gateway/subscriptions)
+  from The Guild: federated subscriptions over WebSocket, SSE, multipart HTTP
+  or HTTP callback, with fields from other subgraphs resolved per event.
+- [Cosmo Router](https://wundergraph.com/blog/native-subscriptions-with-cosmo-router)
+  (Apache 2.0): federated subscriptions over `graphql-ws` or SSE, plus
+  event-driven subscriptions fed directly from Kafka, NATS or Redis.
+- Apollo's [GraphOS Router](https://www.apollographql.com/docs/graphos/routing/v1/graphos-features)
+  supports them as a GraphOS feature that needs a GraphOS connection and is
+  [metered on paid plans](https://www.apollographql.com/pricing); it is not
+  part of the self-contained setup this project aims for.
+
+Moving to one of the open-source routers would let the subscriptions
+service become a normal subgraph behind a single endpoint, and updates
+could include the changed data directly. This belongs to the dependency
+upgrade.
+
 Two subscriptions exist:
 
 ```graphql
