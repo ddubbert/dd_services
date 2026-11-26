@@ -6,9 +6,11 @@ them and get live updates.
 
 ## What it is
 
-dd_services was meant as a small cloud platform that several applications
-use together instead of each building its own backend. It provides the
-building blocks almost every collaborative app needs:
+dd_services is a general-purpose, self-hostable backend for collaborative
+applications: a lightweight alternative to paid cloud collaboration
+platforms that anyone can run on their own infrastructure and quickly extend
+with their own applications. It provides the building blocks almost every
+collaborative app needs:
 
 - **who** takes part: users, either ad-hoc guests or logged-in accounts;
 - **where** they work together: sessions with owners, participants and
@@ -16,26 +18,22 @@ building blocks almost every collaborative app needs:
 - **what** they share: files (images, text, audio, PDF);
 - **what changed**: live updates for sessions and users.
 
-Each application keeps only its own domain logic and works on the same
-users, sessions and files as the others. Because every service publishes
-its changes as events, new services can be added that react to them and
-build on the shared data for their own use case.
+An application on top keeps only its own domain logic and works on the same
+users, sessions and files as every other application. Because each service
+publishes its changes as events, new services can be added that react to
+them and build on the shared data for their own use case. Several apps can
+thus complement each other, for example the steps of a brainstorming that
+uses different methods, each step being its own app working on the same
+session and files. PictShareIt, the frontend prototype for this backend, is
+one such app.
 
-The intended picture was a set of apps that complement each other along a
-workflow, for example a brainstorming session that moves through several
-steps and methods:
-
-- **PictShareIt** (the frontend prototype for this backend): participants
-  join a session, for example by QR code, and collect pictures and other
-  files in it.
-- **MixMonster** was planned to connect as well, so it could work with the
-  images collected in a session.
-- Further method-specific apps or services could pick up the same session
-  and its files for the next step.
-
-Only the shared core (users, sessions, files, live updates) and the start
-of PictShareIt were built; the connection of other apps such as MixMonster
-remained a plan.
+**Ad hoc first, persistent when needed.** Collaboration should start without
+any setup: anyone can join a session as a guest, without an account, for
+example by scanning a QR code; such sessions and guests expire on their own.
+At the same time the platform is meant to turn what happens ad hoc into
+lasting data: logged-in users can keep sessions for up to six months and
+copy files into their own permanent storage. Moving a guest's work into an
+account was part of this idea but is not built yet.
 
 > **Status:** unfinished research prototype, no longer developed. It runs
 > locally with Docker Compose; it was never hardened for production.
