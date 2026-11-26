@@ -34,10 +34,10 @@ steps, each done by its own app on the same session and files:
 **Ad hoc first, persistent when needed.** Collaboration should start without
 any setup: anyone can join a session as a guest, without an account, for
 example by scanning a QR code; such sessions and guests expire on their own.
-At the same time the platform is meant to turn what happens ad hoc into
+At the same time the platform turns what happens ad hoc into
 lasting data: logged-in users can keep sessions for up to six months and
 copy files into their own permanent storage. Moving a guest's work into an
-account was part of this idea but is not built yet.
+account is part of this idea but not built yet.
 
 > **Status:** unfinished research prototype, no longer developed. It runs
 > locally with Docker Compose; it was never hardened for production.

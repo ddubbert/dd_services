@@ -1,9 +1,8 @@
 # Security
 
 How authentication, authorization and the signed file links work, what
-protects the infrastructure, and what is missing. Reconstructed from the code
-in 2026; open problems are numbered in [known-issues.md](known-issues.md)
-and referenced here as (#n).
+protects the infrastructure, and what is missing. Open problems are numbered
+in [known-issues.md](known-issues.md) and referenced here as (#n).
 
 ## Passwords and identities
 

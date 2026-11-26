@@ -1,9 +1,8 @@
 # How to use the API
 
 This document describes what dd_services does from a client's point of view
-and in which order the calls have to happen. It was reconstructed in 2026
-from the code and from `dd_services.postman_collection.json`; where the code
-behaves surprisingly, this is marked and collected in
+and in which order the calls have to happen. Where the current code does
+not behave as intended, this is marked and listed in
 [known-issues.md](known-issues.md).
 
 ## Endpoints
@@ -176,8 +175,8 @@ automatically:
 | `X_LONG` | 6 months | no |
 
 Note that `SHORT` is shorter than `X_SHORT` and is the default, so a session
-created without `ttl` disappears after two minutes. This looks like a test
-setting; pass `ttl` explicitly.
+created without `ttl` disappears after two minutes. This is a test setting;
+pass `ttl` explicitly.
 
 `adminId` is only returned to owners. It is the session's private id and
 works as an owner invite (see below).
@@ -407,7 +406,7 @@ the current state through the gateway.
 | `SESSION_ADDED` | a session was created with you as member (joining or being added to an existing session does not send it) |
 | `SESSION_UPDATED` / `SESSION_REMOVED` | one of your sessions changed or was deleted |
 | `FILE_ADDED` / `FILE_REMOVED` | a file you own was created or deleted |
-| `USER_DELETED` | intended for your own deletion; currently not delivered |
+| `USER_DELETED` | your account was deleted (not delivered yet, see known issues) |
 
 The subscriptions service learns about session membership through Kafka, so
 its view can lag a moment behind the gateway.
